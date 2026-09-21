@@ -9,10 +9,10 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Validate required deployment secrets
+      - name: Validate deployment secrets
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -24,7 +24,7 @@ jobs:
           test -n "$FTP_USERNAME" || { echo "Missing FTP_USERNAME"; exit 1; }
           test -n "$FTP_PASSWORD" || { echo "Missing FTP_PASSWORD"; exit 1; }
           test -n "$FTP_SERVER_DIR" || { echo "Missing FTP_SERVER_DIR"; exit 1; }
-      - name: Deploy
+      - name: Deploy to Webkitty
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -41,4 +41,12 @@ jobs:
             **/.github/**
             **/database/**
             **/.env*
+            CNAME
             README.md
+      - name: Verify production HTTP and HTTPS
+        shell: bash
+        run: |
+          sleep 5
+          curl --fail --silent --show-error --location --max-time 30 https://kupsiapku.cz/ > /dev/null
+          curl --fail --silent --show-error --location --max-time 30 http://kupsiapku.cz/ > /dev/null
+          echo "Production verification OK"
