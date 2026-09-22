@@ -212,3 +212,8 @@ section[id]{scroll-margin-top:92px}
   }
   .demoPhone .phoneScreen{display:block!important;width:100%!important;height:100%!important;min-width:0!important}
 }
+
+/* Lighthouse accessibility: stronger readable secondary text and explicit focus */
+:root{--muted:#52657f}
+.showcaseExact .sub,.showcaseBenefits span,.showcaseTag span,.phoneScreen p,.lesson small,.words small{color:#52657f}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #0b5bd3;outline-offset:3px}
