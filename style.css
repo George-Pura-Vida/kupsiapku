@@ -230,3 +230,25 @@ a,button,summary,select,input[type="checkbox"]{touch-action:manipulation}
 .legalNav a{display:inline-flex;align-items:center;padding:8px 4px}
 .consent label{display:block;padding:7px 0;line-height:1.5}
 .consent input[type="checkbox"]{width:20px;height:20px;vertical-align:middle;margin-right:10px}
+
+/* Lighthouse a11y pass 3 — all interactive targets + AAA-safe secondary contrast */
+:root{--muted:#344a64}
+.sub,.legal,.step p,.faq details p,.screenCard figcaption span,.galleryNote,
+.showcaseExact .sub,.showcaseBenefits span,.showcaseTag span,.phoneScreen p,
+.lesson small,.words small,.proofGrid span,.qrPlaceholder,.accountActions{color:#344a64}
+header nav a,.mobileMenu nav a,footer a,.consent a,.legalNav a{
+  min-height:48px;
+  display:inline-flex;
+  align-items:center;
+  padding:12px 10px;
+}
+header nav,.mobileMenu nav,.legalNav{gap:8px}
+button,.btn,.cartbtn,.detailLink,#cookiesOk,select{
+  min-height:48px;
+}
+button,.btn,.cartbtn,.detailLink,#cookiesOk{padding-top:12px;padding-bottom:12px}
+input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px}
+@media(max-width:800px){
+  header nav a,.mobileMenu nav a{width:100%;padding:14px 16px;margin:2px 0}
+  .topLang{width:auto!important;min-width:48px;justify-content:center;padding:12px!important}
+}
