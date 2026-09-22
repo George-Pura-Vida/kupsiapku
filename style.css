@@ -193,3 +193,22 @@ section[id]{scroll-margin-top:92px}
   section[id]{scroll-margin-top:82px}
   .mobileMenu nav#mainNav{top:72px!important;max-height:calc(100dvh - 84px);overflow-y:auto}
 }
+
+/* Mobile gallery v3 — full-width cards, no noodle phones */
+@media(max-width:760px){
+  .demoPhones{display:flex!important;flex-direction:column!important;align-items:center!important;gap:28px!important;width:100%!important;margin:30px 0 38px!important}
+  .demoPhone,.demoPhone.portfolio{
+    display:block!important;
+    flex:none!important;
+    width:min(92%,360px)!important;
+    max-width:360px!important;
+    min-width:min(92%,300px)!important;
+    height:auto!important;
+    aspect-ratio:9/18.5!important;
+    margin:0 auto!important;
+    transform:none!important;
+    border:7px solid #101216!important;
+    border-radius:38px!important;
+  }
+  .demoPhone .phoneScreen{display:block!important;width:100%!important;height:100%!important;min-width:0!important}
+}
