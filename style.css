@@ -68,3 +68,21 @@ header{box-shadow:0 8px 30px #17395c0a}.brand{letter-spacing:-.02em}.brand b{col
 .flagGB:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,transparent 38%,#fff 38% 45%,#cf142b 45% 55%,#fff 55% 62%,transparent 62%),linear-gradient(to bottom,transparent 32%,#fff 32% 41%,#cf142b 41% 59%,#fff 59% 68%,transparent 68%)}
 
 /* availability recovery marker 2026-09-22 16:49 */
+
+/* Premium bilingual app showcase */
+#gallery{overflow:hidden;background:radial-gradient(circle at 18% 28%,#dff5ff 0,transparent 27%),radial-gradient(circle at 82% 20%,#ffe7f2 0,transparent 25%),#fbfdff}
+#gallery .wrap{text-align:center}
+#gallery h2{font-size:clamp(42px,6vw,72px);line-height:1.02;margin:10px 0 20px}
+#gallery h2 em{font-style:normal;color:#ff2f68}
+#gallery .sub{font-size:clamp(20px,2.6vw,30px);line-height:1.25}
+.showcasePhones{display:flex;justify-content:center;align-items:flex-end;gap:18px;margin:38px auto 28px;max-width:980px}
+.showcasePhones figure{margin:0;width:28%;position:relative}
+.showcasePhones figure.mainPhone{width:34%;z-index:2}
+.showcasePhones img{display:block;width:100%;aspect-ratio:9/18.5;object-fit:cover;object-position:top;border:9px solid #111;border-radius:42px;background:#fff;box-shadow:0 18px 45px #0c28542c}
+.showcasePhones figcaption{font-weight:800;color:var(--navy);padding-top:10px}
+.showcaseBenefits{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;max-width:1000px;margin:32px auto 0}
+.showcaseBenefits div{display:grid;justify-items:center;gap:7px}
+.showcaseBenefits i{font-style:normal;font-size:29px;width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:#fff;box-shadow:0 8px 24px #17395c12}
+.showcaseBenefits b{color:var(--navy);font-size:16px}
+.showcaseBenefits span{color:var(--muted);font-size:14px;line-height:1.35}
+@media(max-width:700px){#gallery{padding-top:48px}#gallery h2{font-size:46px}.showcasePhones{gap:8px;margin-left:-9%;margin-right:-9%}.showcasePhones figure{width:30%}.showcasePhones figure.mainPhone{width:40%}.showcasePhones img{border-width:5px;border-radius:24px}.showcasePhones figcaption{display:none}.showcaseBenefits{grid-template-columns:repeat(2,1fr);gap:26px 12px}.showcaseBenefits b{font-size:15px}}
