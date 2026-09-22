@@ -658,3 +658,59 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
   .mobileMenu nav#mainNav .langSwitch>a,
   .mobileMenu nav#mainNav .langSwitch>b{font-size:17px!important;line-height:1!important}
 }
+
+
+/* FINAL DESKTOP CZ HEADER — prevent collisions on notebook widths */
+@media(min-width:801px) and (max-width:1180px){
+  header .nav{
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+  header .brand{font-size:18px!important;flex:0 0 auto!important}
+  header .desktopNav{
+    margin-left:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    gap:3px!important;
+    min-width:0!important;
+  }
+  header .desktopNav>a{
+    font-size:11px!important;
+    padding:8px 3px!important;
+    min-height:44px!important;
+  }
+  header .desktopNav .cartbtn{
+    min-width:48px!important;
+    padding:8px 9px!important;
+  }
+  header .desktopNav .langSwitch{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    gap:3px!important;
+  }
+  header .desktopNav .langSwitch>a,
+  header .desktopNav .langSwitch>b{
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    min-width:auto!important;
+    padding:8px 2px!important;
+    font-size:11px!important;
+  }
+  header .desktopNav .langSwitch .flag{
+    width:20px!important;min-width:20px!important;height:14px!important;
+  }
+}
+@media(min-width:801px) and (max-width:980px){
+  header .brand{font-size:16px!important}
+  header .desktopNav>a{font-size:10px!important;padding-left:1px!important;padding-right:1px!important}
+  header .desktopNav{gap:1px!important}
+  header .desktopNav .langSwitch>a,
+  header .desktopNav .langSwitch>b{font-size:10px!important}
+}
