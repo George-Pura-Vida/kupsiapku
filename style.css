@@ -66,3 +66,5 @@ header{box-shadow:0 8px 30px #17395c0a}.brand{letter-spacing:-.02em}.brand b{col
 .flagGB{background:#21468b;position:relative}
 .flagGB:before{content:"";position:absolute;inset:0;background:linear-gradient(33deg,transparent 40%,#fff 40% 48%,#cf142b 48% 53%,#fff 53% 61%,transparent 61%),linear-gradient(-33deg,transparent 40%,#fff 40% 48%,#cf142b 48% 53%,#fff 53% 61%,transparent 61%)}
 .flagGB:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,transparent 38%,#fff 38% 45%,#cf142b 45% 55%,#fff 55% 62%,transparent 62%),linear-gradient(to bottom,transparent 32%,#fff 32% 41%,#cf142b 41% 59%,#fff 59% 68%,transparent 68%)}
+
+/* availability recovery marker 2026-09-22 16:49 */
