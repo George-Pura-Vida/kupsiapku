@@ -53,3 +53,13 @@ header{box-shadow:0 8px 30px #17395c0a}.brand{letter-spacing:-.02em}.brand b{col
 .desktopNav{margin-left:auto;display:flex;gap:22px;align-items:center}
 @media(max-width:800px){.desktopNav{display:none!important}}
 @media(min-width:801px){.mobileMenu,.topLang{display:none!important}.desktopNav{display:flex!important}}
+
+
+/* Reliable language flags (works even where flag emoji are unavailable) */
+.langSwitch a,.langSwitch b,.topLang{display:inline-flex;align-items:center;gap:7px}
+.flag{display:inline-block;width:24px;height:16px;min-width:24px;border-radius:2px;box-shadow:0 0 0 1px #0c285426;vertical-align:-2px;overflow:hidden}
+.flagCZ{background:linear-gradient(to bottom,#fff 0 50%,#d7141a 50% 100%);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+.flagCZ:before{content:"";display:block;width:13px;height:16px;background:#11457e;clip-path:polygon(0 0,100% 50%,0 100%)}
+.flagGB{background:#21468b;position:relative}
+.flagGB:before{content:"";position:absolute;inset:0;background:linear-gradient(33deg,transparent 40%,#fff 40% 48%,#cf142b 48% 53%,#fff 53% 61%,transparent 61%),linear-gradient(-33deg,transparent 40%,#fff 40% 48%,#cf142b 48% 53%,#fff 53% 61%,transparent 61%)}
+.flagGB:after{content:"";position:absolute;inset:0;background:linear-gradient(to right,transparent 38%,#fff 38% 45%,#cf142b 45% 55%,#fff 55% 62%,transparent 62%),linear-gradient(to bottom,transparent 32%,#fff 32% 41%,#cf142b 41% 59%,#fff 59% 68%,transparent 68%)}
