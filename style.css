@@ -714,3 +714,65 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
   header .desktopNav .langSwitch>a,
   header .desktopNav .langSwitch>b{font-size:10px!important}
 }
+
+
+/* HEADER RESET 2026-09-22 — single source of truth */
+@media(max-width:800px){
+  header .mobileMenu nav#mainNav .langSwitch{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    align-items:stretch!important;
+    justify-items:stretch!important;
+    width:100%!important;
+    padding:16px 16px 8px!important;
+    margin:0!important;
+    gap:0!important;
+  }
+  header .mobileMenu nav#mainNav .langSwitch > a,
+  header .mobileMenu nav#mainNav .langSwitch > b{
+    display:grid!important;
+    grid-template-columns:28px 1fr!important;
+    align-items:center!important;
+    justify-items:start!important;
+    column-gap:12px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:48px!important;
+    padding:10px 0!important;
+    margin:0!important;
+    font-size:17px!important;
+    line-height:1!important;
+    text-align:left!important;
+  }
+  header .mobileMenu nav#mainNav .langSwitch > a > .flag,
+  header .mobileMenu nav#mainNav .langSwitch > b > .flag{
+    display:block!important;
+    grid-column:1!important;
+    width:28px!important;
+    min-width:28px!important;
+    height:18px!important;
+    margin:0!important;
+    justify-self:start!important;
+  }
+}
+@media(min-width:801px){
+  header .nav{display:flex!important;align-items:center!important;flex-wrap:nowrap!important;height:76px!important;min-height:76px!important}
+  header .brand{flex:0 0 auto!important}
+  header .desktopNav{margin-left:auto!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;flex-wrap:nowrap!important;min-width:0!important}
+  header .desktopNav > a{display:inline-flex!important;align-items:center!important;justify-content:center!important;width:auto!important;white-space:nowrap!important}
+  header .desktopNav .langSwitch{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;flex:0 0 auto!important;width:auto!important;min-width:0!important}
+  header .desktopNav .langSwitch > a,
+  header .desktopNav .langSwitch > b{display:inline-flex!important;align-items:center!important;justify-content:flex-start!important;width:auto!important;min-width:0!important;white-space:nowrap!important}
+}
+@media(min-width:801px) and (max-width:1180px){
+  header .wrap{max-width:100%!important}
+  header .nav{padding-left:10px!important;padding-right:10px!important;gap:7px!important}
+  header .brand{font-size:16px!important}
+  header .desktopNav{gap:2px!important}
+  header .desktopNav > a{font-size:10px!important;padding:8px 2px!important;min-height:44px!important}
+  header .desktopNav .cartbtn{min-width:46px!important;padding:8px 7px!important}
+  header .desktopNav .langSwitch{gap:2px!important}
+  header .desktopNav .langSwitch > a,
+  header .desktopNav .langSwitch > b{font-size:10px!important;gap:3px!important;padding:8px 1px!important;min-height:44px!important}
+  header .desktopNav .langSwitch .flag{width:18px!important;min-width:18px!important;height:12px!important}
+}
