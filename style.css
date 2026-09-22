@@ -462,3 +462,39 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
   header .desktopNav .langSwitch a,
   header .desktopNav .langSwitch b{font-size:13px!important;padding-left:3px!important;padding-right:3px!important}
 }
+
+
+/* Desktop language flags: one clean horizontal row, never stacked */
+@media(min-width:801px){
+  header .desktopNav .langSwitch{
+    display:grid!important;
+    grid-auto-flow:column!important;
+    grid-auto-columns:max-content!important;
+    align-items:center!important;
+    justify-content:end!important;
+    column-gap:10px!important;
+    width:max-content!important;
+    min-width:max-content!important;
+  }
+  header .desktopNav .langSwitch a,
+  header .desktopNav .langSwitch b{
+    display:inline-grid!important;
+    grid-template-columns:28px max-content!important;
+    align-items:center!important;
+    justify-content:start!important;
+    column-gap:6px!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    min-height:44px!important;
+    padding:6px 4px!important;
+    line-height:1!important;
+  }
+  header .desktopNav .langSwitch .flag,
+  header .desktopNav .langSwitch [class^="flag"]{
+    width:28px!important;
+    min-width:28px!important;
+    height:18px!important;
+    margin:0!important;
+    justify-self:start!important;
+  }
+}
