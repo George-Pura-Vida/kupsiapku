@@ -126,3 +126,47 @@ img,svg,video,canvas{max-width:100%}
   .showcaseBenefits div{min-width:0}.showcaseBenefits span{overflow-wrap:anywhere}
   .showcaseTag{width:100%;max-width:100%;padding:22px 14px;margin-top:30px}
 }
+
+/* Mobile gallery v2: preserve phone proportions and readable previews */
+@media(max-width:760px){
+  .demoPhones{
+    display:grid;
+    grid-template-columns:1fr;
+    justify-items:center;
+    gap:24px;
+    width:100%;
+    max-width:100%;
+    margin:30px 0 36px;
+  }
+  .demoPhone,.demoPhone.portfolio{
+    width:min(82vw,330px);
+    height:auto;
+    aspect-ratio:9/18.5;
+    min-width:0;
+    max-width:330px;
+    border-width:7px;
+    border-radius:36px;
+    transform:none;
+  }
+  .phoneScreen{
+    width:100%;
+    height:100%;
+    padding:27px 15px 15px;
+    font-size:12px;
+    overflow:hidden;
+  }
+  .phoneScreen h3{font-size:20px}
+  .phoneScreen p{font-size:12px;margin-bottom:16px}
+  .status{margin-bottom:22px}
+  .meditation h3{margin-top:24px}
+  .play{width:64px;height:64px;margin:60px auto 12px;font-size:24px}
+  .meditation strong{font-size:21px}
+  .miniTiles{gap:6px;margin:18px 0}
+  .miniTiles span{padding:10px 2px;font-size:19px}
+  .miniTiles i{font-size:9px}
+  .quote{padding:12px;font-size:10px}
+  .total{padding:11px}.total strong{font-size:18px}.total b{font-size:15px;right:9px;bottom:13px}
+  .asset{grid-template-columns:30px 1fr auto;gap:2px 7px;padding:10px;margin:8px 0;font-size:11px}
+  .spanish button{padding:11px;margin:11px 0;font-size:11px}
+  .spanish h4{margin:12px 0 7px}.lesson,.words{padding:10px;line-height:1.55}
+}
