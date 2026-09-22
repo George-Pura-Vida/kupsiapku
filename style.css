@@ -498,3 +498,127 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
     justify-self:start!important;
   }
 }
+
+
+/* FINAL HEADER FIX — CZ + EN, mobile flags + desktop layout */
+@media(max-width:800px){
+  .mobileMenu nav#mainNav .langSwitch{
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    justify-items:stretch!important;
+    align-items:stretch!important;
+    width:100%!important;
+    padding:14px 16px 8px!important;
+    margin:0!important;
+    gap:0!important;
+  }
+  .mobileMenu nav#mainNav .langSwitch>a,
+  .mobileMenu nav#mainNav .langSwitch>b{
+    box-sizing:border-box!important;
+    display:grid!important;
+    grid-template-columns:32px minmax(0,1fr)!important;
+    column-gap:12px!important;
+    align-items:center!important;
+    justify-content:start!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:48px!important;
+    padding:10px 0!important;
+    margin:0!important;
+    text-align:left!important;
+  }
+  .mobileMenu nav#mainNav .langSwitch .flag,
+  .mobileMenu nav#mainNav .langSwitch [class^="flag"]{
+    box-sizing:border-box!important;
+    width:24px!important;
+    min-width:24px!important;
+    height:16px!important;
+    margin:0!important;
+    justify-self:start!important;
+  }
+}
+@media(min-width:801px){
+  header .nav{
+    min-height:72px!important;
+    height:auto!important;
+    display:grid!important;
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    align-items:center!important;
+    column-gap:24px!important;
+  }
+  header .brand{grid-column:1!important;margin:0!important}
+  header .desktopNav{
+    grid-column:2!important;
+    width:100%!important;
+    margin:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    gap:clamp(6px,1vw,16px)!important;
+    min-width:0!important;
+  }
+  header .desktopNav>a{
+    flex:0 1 auto!important;
+    width:auto!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+    padding:10px clamp(2px,.4vw,7px)!important;
+    margin:0!important;
+    line-height:1!important;
+  }
+  header .desktopNav .cartbtn{
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:58px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:8px 12px!important;
+  }
+  header .desktopNav .langSwitch{
+    flex:0 0 auto!important;
+    display:grid!important;
+    grid-template-columns:max-content max-content!important;
+    align-items:center!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    gap:8px!important;
+    padding:0!important;
+    margin:0!important;
+  }
+  header .desktopNav .langSwitch>a,
+  header .desktopNav .langSwitch>b{
+    display:grid!important;
+    grid-template-columns:24px max-content!important;
+    column-gap:6px!important;
+    align-items:center!important;
+    justify-content:start!important;
+    width:max-content!important;
+    min-width:max-content!important;
+    min-height:44px!important;
+    padding:8px 2px!important;
+    margin:0!important;
+    line-height:1!important;
+  }
+  header .desktopNav .langSwitch .flag,
+  header .desktopNav .langSwitch [class^="flag"]{
+    width:24px!important;
+    min-width:24px!important;
+    height:16px!important;
+    margin:0!important;
+  }
+  header .topLang,header .mobileMenu{display:none!important}
+}
+@media(min-width:801px) and (max-width:1250px){
+  header .nav{column-gap:12px!important;padding-left:14px!important;padding-right:14px!important}
+  header .brand{font-size:18px!important}
+  header .desktopNav{gap:4px!important}
+  header .desktopNav>a{font-size:12px!important;padding-left:2px!important;padding-right:2px!important}
+  header .desktopNav .cartbtn{min-width:50px!important;padding-left:8px!important;padding-right:8px!important}
+  header .desktopNav .langSwitch{gap:4px!important}
+  header .desktopNav .langSwitch>a,
+  header .desktopNav .langSwitch>b{font-size:12px!important;grid-template-columns:20px max-content!important;column-gap:4px!important}
+  header .desktopNav .langSwitch .flag,
+  header .desktopNav .langSwitch [class^="flag"]{width:20px!important;min-width:20px!important;height:14px!important}
+}
