@@ -217,3 +217,16 @@ section[id]{scroll-margin-top:92px}
 :root{--muted:#52657f}
 .showcaseExact .sub,.showcaseBenefits span,.showcaseTag span,.phoneScreen p,.lesson small,.words small{color:#52657f}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #0b5bd3;outline-offset:3px}
+
+/* Lighthouse a11y pass 2: WCAG contrast + 44px touch targets */
+:root{--muted:#465a73}
+.sub,.legal,.step p,.faq details p,.screenCard figcaption span,.galleryNote,
+.showcaseExact .sub,.showcaseBenefits span,.showcaseTag span,.phoneScreen p,
+.lesson small,.words small{color:#465a73}
+a,button,summary,select,input[type="checkbox"]{touch-action:manipulation}
+.btn,.cartbtn,.detailLink,.topLang,.legalNav a,.faq summary,#cookiesOk{min-height:44px}
+.btn,.cartbtn,.detailLink,#cookiesOk{display:inline-flex;align-items:center;justify-content:center}
+.topLang{padding:10px 8px}
+.legalNav a{display:inline-flex;align-items:center;padding:8px 4px}
+.consent label{display:block;padding:7px 0;line-height:1.5}
+.consent input[type="checkbox"]{width:20px;height:20px;vertical-align:middle;margin-right:10px}
