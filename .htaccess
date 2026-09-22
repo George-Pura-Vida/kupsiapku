@@ -1,7 +1,7 @@
-Options -Indexes
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
 RewriteEngine On
 RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
-<FilesMatch "^\.env">
-  Require all denied
-</FilesMatch>
+</IfModule>
