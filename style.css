@@ -325,3 +325,58 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
   .topLang{min-width:44px!important;padding:10px 4px!important;font-size:14px!important}
   .mobileMenu{left:8px!important;right:8px!important;max-width:calc(100vw - 16px)!important}
 }
+
+/* Desktop navigation alignment — keep cart and language switch on one row */
+@media(min-width:801px){
+  body>header .nav{gap:18px!important}
+  .desktopNav{
+    margin-left:auto!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    flex-wrap:nowrap!important;
+    gap:14px!important;
+    min-width:0!important;
+    white-space:nowrap!important;
+  }
+  .desktopNav>a{display:inline-flex!important;align-items:center!important;min-height:44px!important;padding:8px 4px!important}
+  .desktopNav .cartbtn{
+    flex:0 0 auto!important;
+    min-width:74px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:10px 16px!important;
+  }
+  .desktopNav .langSwitch{
+    flex:0 0 auto!important;
+    width:auto!important;
+    display:grid!important;
+    grid-template-columns:max-content max-content!important;
+    align-items:center!important;
+    gap:12px!important;
+    margin:0!important;
+    padding:0!important;
+  }
+  .desktopNav .langSwitch a,
+  .desktopNav .langSwitch b{
+    display:grid!important;
+    grid-template-columns:24px max-content!important;
+    align-items:center!important;
+    column-gap:8px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:8px 0!important;
+    line-height:1!important;
+  }
+  .desktopNav .langSwitch .flag{
+    width:24px!important;min-width:24px!important;height:16px!important;margin:0!important;
+  }
+}
+@media(min-width:801px) and (max-width:1100px){
+  .brand{font-size:20px!important}
+  .desktopNav{gap:8px!important}
+  .desktopNav>a{font-size:12px!important;padding-left:2px!important;padding-right:2px!important}
+  .desktopNav .cartbtn{min-width:62px!important;padding-left:12px!important;padding-right:12px!important}
+  .desktopNav .langSwitch{gap:8px!important}
+}
