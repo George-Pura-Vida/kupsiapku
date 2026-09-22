@@ -47,3 +47,9 @@ header{box-shadow:0 8px 30px #17395c0a}.brand{letter-spacing:-.02em}.brand b{col
 /* Visible language switch in header */
 .topLang{display:none;text-decoration:none;color:var(--navy);font-weight:800;white-space:nowrap;align-items:center;gap:4px;font-size:16px}
 @media(max-width:800px){.topLang{display:flex;margin-left:auto}.mobileMenu{margin-left:8px!important}}
+
+
+/* Desktop + mobile navigation split */
+.desktopNav{margin-left:auto;display:flex;gap:22px;align-items:center}
+@media(max-width:800px){.desktopNav{display:none!important}}
+@media(min-width:801px){.mobileMenu,.topLang{display:none!important}.desktopNav{display:flex!important}}
