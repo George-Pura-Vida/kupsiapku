@@ -622,3 +622,39 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
   header .desktopNav .langSwitch .flag,
   header .desktopNav .langSwitch [class^="flag"]{width:20px!important;min-width:20px!important;height:14px!important}
 }
+
+
+/* FINAL MOBILE LANGUAGE ALIGNMENT — approved visual */
+@media(max-width:800px){
+  .mobileMenu nav#mainNav .langSwitch{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    width:100%!important;
+    padding:18px 24px 12px!important;
+    margin:0!important;
+    gap:2px!important;
+  }
+  .mobileMenu nav#mainNav .langSwitch>a,
+  .mobileMenu nav#mainNav .langSwitch>b{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    width:100%!important;
+    min-height:48px!important;
+    margin:0!important;
+    padding:10px 0!important;
+    gap:12px!important;
+    text-align:left!important;
+  }
+  .mobileMenu nav#mainNav .langSwitch .flag{
+    flex:0 0 28px!important;
+    width:28px!important;
+    min-width:28px!important;
+    height:18px!important;
+    margin:0!important;
+  }
+  .mobileMenu nav#mainNav .langSwitch>a,
+  .mobileMenu nav#mainNav .langSwitch>b{font-size:17px!important;line-height:1!important}
+}
