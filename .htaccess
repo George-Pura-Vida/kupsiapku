@@ -1,4 +1,12 @@
 DirectoryIndex index.html
 
-# HTTPS is handled by Webkitty at the hosting/proxy layer.
-# Do not force HTTPS here; doing so can create a redirect loop behind a proxy.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+
+# Canonicalize an explicitly requested /index.html to the clean root URL.
+# THE_REQUEST prevents an internal DirectoryIndex lookup from looping.
+RewriteCond %{THE_REQUEST} \s/+index\.html(?:[?\s]) [NC]
+RewriteRule ^index\.html$ / [R=301,L]
+</IfModule>
+
+# HTTPS is handled by Webkitty/CDN. Do not redirect HTTPS here.
