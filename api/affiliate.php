@@ -35,6 +35,19 @@ if ($method === 'POST' && $action === 'register') {
     respond(['ok'=>true,'token'=>$token,'emailSent'=>$emailSent,'profile'=>['code'=>$code,'firstName'=>clean_string($data,'firstName'),'shareUrl'=>$shareUrl]] ,201);
 }
 
+
+if ($method === 'POST' && $action === 'resend') {
+    $affiliate = affiliate_from_token($pdo, (string)($_SERVER['HTTP_X_AFFILIATE_TOKEN'] ?? ''));
+    if (!$affiliate) respond(['ok'=>false,'error'=>'Přihlášení partnera není platné.'], 401);
+    $shareUrl = 'https://kupsiapku.cz/?ref='.rawurlencode($affiliate['code']);
+    $profileUrl = 'https://kupsiapku.cz/doporucit.html?code='.rawurlencode($affiliate['code']);
+    $subject = '=?UTF-8?B?'.base64_encode('Tvůj doporučitelský kód | Kup si apku').'?=';
+    $body = '<!doctype html><html lang="cs"><body style="font-family:Arial,sans-serif;color:#102a56;line-height:1.6"><h1>Tvůj doporučitelský kód je připravený</h1><p>Ahoj '.htmlspecialchars($affiliate['first_name'],ENT_QUOTES,'UTF-8').',</p><p>Osobní kód: <strong>'.htmlspecialchars($affiliate['code'],ENT_QUOTES,'UTF-8').'</strong></p><p><a href="'.htmlspecialchars($shareUrl,ENT_QUOTES,'UTF-8').'" style="display:inline-block;padding:12px 18px;background:#ef2d63;color:#fff;text-decoration:none;border-radius:10px">Otevřít doporučitelský odkaz</a></p><p>QR náhled: <a href="'.htmlspecialchars($profileUrl,ENT_QUOTES,'UTF-8').'">'.htmlspecialchars($profileUrl,ENT_QUOTES,'UTF-8').'</a></p><p>Kup si apku</p></body></html>';
+    $headers = ['MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','From: Kup si apku <info@jirijanousek.cz>','Reply-To: info@jirijanousek.cz'];
+    $sent = @mail($affiliate['email'], $subject, $body, implode("\r\n", $headers));
+    respond(['ok'=>$sent,'emailSent'=>$sent,'message'=>$sent?'E-mail byl znovu odeslán.':'E-mail se nepodařilo odeslat.'], $sent?200:503);
+}
+
 if ($method === 'GET' && $action === 'profile') {
     $affiliate = affiliate_from_token($pdo, (string)($_SERVER['HTTP_X_AFFILIATE_TOKEN'] ?? ''));
     if (!$affiliate) respond(['ok'=>false,'error'=>'Přihlášení partnera není platné.'], 401);
