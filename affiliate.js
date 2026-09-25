@@ -12,7 +12,7 @@ function render(profile,stats){
   linkEl.textContent=profile.shareUrl;
   document.querySelector('#sharePreview').textContent=profile.firstName+', toto je tvůj osobní doporučitelský odkaz.';
   qrEl.src=qrData(profile.shareUrl); qrEl.alt='QR kód doporučitelského odkazu '+profile.code;
-  document.querySelector('#qrDownload').href=qrData(profile.shareUrl);
+  document.querySelector('#qrDownload').href=qrData(profile.shareUrl); document.querySelector('#qrDownload').dataset.code=profile.code;
   document.querySelector('#affiliateResult').hidden=false;
   form.hidden=true;
   if(stats){
@@ -42,11 +42,12 @@ form.addEventListener('submit',async event=>{
 document.querySelector('#copyLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(linkEl.textContent);setStatus('Odkaz je zkopírovaný.','success');});
 document.querySelector('#qrDownload').addEventListener('click',event=>{
   event.preventDefault();
+  const downloadCode=event.currentTarget.dataset.code||'kod';
   const image=new Image();
   image.onload=()=>{
     const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
     const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,1024,1024);context.drawImage(image,0,0,1024,1024);
-    canvas.toBlob(blob=>{if(!blob){setStatus('PNG se nepodařilo vytvořit.','error');return;}const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='kupsiapku-qr-'+(event.currentTarget.dataset.code||'kod')+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('QR byl stažen jako PNG.','success');},'image/png');
+    canvas.toBlob(blob=>{if(!blob){setStatus('PNG se nepodařilo vytvořit.','error');return;}const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='kupsiapku-qr-'+downloadCode+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('QR byl stažen jako PNG.','success');},'image/png');
   };
   image.onerror=()=>setStatus('QR se nepodařilo převést do PNG.','error');
   image.src=qrEl.src;
