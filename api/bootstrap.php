@@ -100,7 +100,7 @@ function db(): PDO {
             return $pdo;
         } catch (Throwable $error) {
             error_log('MySQL connection failed: '.$error->getMessage());
-            respond(['ok'=>false,'error'=>'Databázové připojení není dostupné.'],503);
+            $pdo = null;
         }
     }
     $dir = __DIR__ . '/data';
