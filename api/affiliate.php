@@ -36,6 +36,25 @@ if ($method === 'POST' && $action === 'register') {
 }
 
 
+if ($method === 'POST' && $action === 'login') {
+    $data = json_input();
+    $email = strtolower(clean_string($data,'email'));
+    if (!filter_var($email,FILTER_VALIDATE_EMAIL)) respond(['ok'=>false,'error'=>'Zadejte platný registrační e-mail.'],422);
+    $stmt = $pdo->prepare('SELECT * FROM affiliates WHERE email = ?');
+    $stmt->execute([$email]);
+    $affiliate = $stmt->fetch();
+    if ($affiliate) {
+        $token = bin2hex(random_bytes(32));
+        $pdo->prepare('UPDATE affiliates SET access_token_hash = ? WHERE id = ?')->execute([hash('sha256',$token),$affiliate['id']]);
+        $url = 'https://kupsiapku.cz/doporucit.html#token='.rawurlencode($token);
+        $subject = '=?UTF-8?B?'.base64_encode('Přihlášení do affiliate programu | Kup si apku').'?=';
+        $body = '<!doctype html><html lang="cs"><body style="font-family:Arial,sans-serif;color:#102a56;line-height:1.6"><h1>Přihlášení do affiliate programu</h1><p>Ahoj '.htmlspecialchars($affiliate['first_name'],ENT_QUOTES,'UTF-8').',</p><p>kliknutím na tlačítko otevřeš svůj affiliate profil na novém zařízení.</p><p><a href="'.htmlspecialchars($url,ENT_QUOTES,'UTF-8').'" style="display:inline-block;padding:12px 18px;background:#ef2d63;color:#fff;text-decoration:none;border-radius:10px">Přihlásit se do affiliate profilu</a></p><p>Pokud jsi o přihlášení nežádal, e-mail ignoruj.</p></body></html>';
+        $headers=['MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','From: Kup si apku <info@jirijanousek.cz>','Reply-To: info@jirijanousek.cz'];
+        @mail($email,$subject,$body,implode("\r\n",$headers));
+    }
+    respond(['ok'=>true,'message'=>'Pokud účet existuje, poslali jsme přihlašovací odkaz na e-mail.']);
+}
+
 if ($method === 'POST' && $action === 'resend') {
     $affiliate = affiliate_from_token($pdo, (string)($_SERVER['HTTP_X_AFFILIATE_TOKEN'] ?? ''));
     if (!$affiliate) respond(['ok'=>false,'error'=>'Přihlášení partnera není platné.'], 401);

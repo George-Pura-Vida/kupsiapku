@@ -51,6 +51,8 @@ document.querySelector('#qrDownload').addEventListener('click',event=>{
 });
 document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=getToken();if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
+document.querySelector('#loginButton').addEventListener('click',async()=>{const email=document.querySelector('#loginEmail').value.trim();if(!email){setStatus('Zadejte registrační e-mail.','error');return;}setStatus('Odesílám přihlašovací odkaz…');try{const data=await api('login',{method:'POST',body:JSON.stringify({email})});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}});
+const fragment=new URLSearchParams(location.hash.slice(1));const loginToken=fragment.get('token');if(loginToken){saveToken(loginToken);history.replaceState(null,'',location.pathname+location.search);}
 const publicCode=new URLSearchParams(location.search).get('code');
 if(publicCode&&!getToken()){
   const shareUrl='https://kupsiapku.cz/?ref='+encodeURIComponent(publicCode);
