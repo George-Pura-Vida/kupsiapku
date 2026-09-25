@@ -67,7 +67,8 @@ if ($method === 'POST' && $action === 'click') {
     $id = $stmt->fetchColumn();
     if (!$id) respond(['ok'=>false,'error'=>'Neplatný doporučitelský kód.'], 404);
     $fingerprint = hash('sha256', ($_SERVER['REMOTE_ADDR'] ?? '').'|'.($_SERVER['HTTP_USER_AGENT'] ?? '').'|'.gmdate('Y-m-d'));
-    $insert = $pdo->prepare('INSERT OR IGNORE INTO referral_clicks(affiliate_id,visitor_hash,landing_page,created_at) VALUES(?,?,?,?)');
+    $insertSql = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql' ? 'INSERT IGNORE INTO referral_clicks(affiliate_id,visitor_hash,landing_page,created_at) VALUES(?,?,?,?)' : 'INSERT OR IGNORE INTO referral_clicks(affiliate_id,visitor_hash,landing_page,created_at) VALUES(?,?,?,?)';
+    $insert = $pdo->prepare($insertSql);
     $insert->execute([$id,$fingerprint,clean_string($data,'landingPage',255),gmdate('c')]);
     respond(['ok'=>true]);
 }

@@ -25,3 +25,8 @@ SetEnv DONATION_ACCOUNT CZ8220100000000223366333+FIOBCZPPXXX
 Header set Cache-Control "no-cache, must-revalidate"
 </FilesMatch>
 </IfModule>
+
+# Never expose local database credentials.
+<FilesMatch "^\\.env">
+Require all denied
+</FilesMatch>
