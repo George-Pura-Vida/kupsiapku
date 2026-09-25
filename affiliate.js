@@ -4,6 +4,10 @@ const linkEl=document.querySelector('#shareLink');
 const statusEl=document.querySelector('#affiliateStatus');
 const qrEl=document.querySelector('#affiliateQr');
 const tokenKey='ksa_affiliate_token';
+let sessionToken='';
+function getToken(){try{return localStorage.getItem(tokenKey)||sessionToken;}catch(_){return sessionToken;}}
+function saveToken(token){sessionToken=token;try{localStorage.setItem(tokenKey,token);}catch(_){setStatus('Profil je vytvořený. Telefon ale blokuje trvalé uložení; tento odkaz si uložte.','info');}}
+function forgetToken(){sessionToken='';try{localStorage.removeItem(tokenKey);}catch(_){}}
 
 function setStatus(message,type='info'){document.querySelectorAll('.affiliateStatus').forEach(el=>{el.textContent=message;el.className='formStatus affiliateStatus '+type;});}
 function qrData(value){const code=qrcode(0,'M');code.addData(value);code.make();return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(code.createSvgTag({cellSize:6,margin:4,scalable:true}));}
@@ -29,14 +33,14 @@ async function api(action,options={}){
   return data;
 }
 async function loadProfile(){
-  const token=localStorage.getItem(tokenKey); if(!token)return;
+  const token=getToken(); if(!token)return;
   try{const data=await api('profile',{headers:{'X-Affiliate-Token':token}});render(data.profile,data.stats);setStatus('Profil a statistiky jsou načtené ze serveru.','success');}
-  catch(error){localStorage.removeItem(tokenKey);setStatus(error.message,'error');}
+  catch(error){forgetToken();setStatus(error.message,'error');}
 }
 form.addEventListener('submit',async event=>{
   event.preventDefault(); const button=form.querySelector('button[type=submit]'); button.disabled=true; setStatus('Vytvářím bezpečný partnerský profil…');
-  const payload=Object.fromEntries(new FormData(form).entries()); payload.privacy=!!form.elements.privacy.checked;
-  try{const data=await api('register',{method:'POST',body:JSON.stringify(payload)});localStorage.setItem(tokenKey,data.token);render(data.profile,{clicks:0,registrations:0,purchases:0,commissionMinor:0});setStatus(data.emailSent?'Hotovo. Kód, QR i potvrzovací e-mail jsou připravené.':'Kód a QR jsou připravené. E-mail se nepodařilo odeslat; osobní odkaz si uložte.','success');}
+  const payload={firstName:form.elements.firstName.value,lastName:form.elements.lastName.value,email:form.elements.email.value,phone:form.elements.phone.value,street:form.elements.street.value,zip:form.elements.zip.value,city:form.elements.city.value,country:form.elements.country.value,privacy:!!form.elements.privacy.checked};
+  try{const data=await api('register',{method:'POST',body:JSON.stringify(payload)});saveToken(data.token);render(data.profile,{clicks:0,registrations:0,purchases:0,commissionMinor:0});setStatus(data.emailSent?'Hotovo. Kód, QR i potvrzovací e-mail jsou připravené.':'Kód a QR jsou připravené. E-mail se nepodařilo odeslat; osobní odkaz si uložte.','success');}
   catch(error){setStatus(error.message,'error');button.disabled=false;}
 });
 document.querySelector('#copyLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(linkEl.textContent);setStatus('Odkaz je zkopírovaný.','success');});
@@ -52,10 +56,10 @@ document.querySelector('#qrDownload').addEventListener('click',event=>{
   image.onerror=()=>setStatus('QR se nepodařilo převést do PNG.','error');
   image.src=qrEl.src;
 });
-document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=localStorage.getItem(tokenKey);if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
+document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=getToken();if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
 const publicCode=new URLSearchParams(location.search).get('code');
-if(publicCode&&!localStorage.getItem(tokenKey)){
+if(publicCode&&!getToken()){
   const shareUrl='https://kupsiapku.cz/?ref='+encodeURIComponent(publicCode);
   render({code:publicCode,firstName:'Partner',shareUrl},{clicks:0,registrations:0,purchases:0,commissionMinor:0});
   setStatus('Veřejný náhled kódu. Statistiky jsou dostupné pouze na registračním zařízení.');
