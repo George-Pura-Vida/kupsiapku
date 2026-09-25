@@ -5,7 +5,7 @@ const statusEl=document.querySelector('#affiliateStatus');
 const qrEl=document.querySelector('#affiliateQr');
 const tokenKey='ksa_affiliate_token';
 
-function setStatus(message,type='info'){statusEl.textContent=message;statusEl.className='formStatus '+type;}
+function setStatus(message,type='info'){document.querySelectorAll('.affiliateStatus').forEach(el=>{el.textContent=message;el.className='formStatus affiliateStatus '+type;});}
 function qrData(value){const code=qrcode(0,'M');code.addData(value);code.make();return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(code.createSvgTag({cellSize:6,margin:4,scalable:true}));}
 function render(profile,stats){
   preview.textContent=profile.code;
@@ -52,7 +52,7 @@ document.querySelector('#qrDownload').addEventListener('click',event=>{
   image.onerror=()=>setStatus('QR se nepodařilo převést do PNG.','error');
   image.src=qrEl.src;
 });
-document.querySelector('#resendEmail').addEventListener('click',async()=>{const token=localStorage.getItem(tokenKey);if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}});
+document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=localStorage.getItem(tokenKey);if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
 const publicCode=new URLSearchParams(location.search).get('code');
 if(publicCode&&!localStorage.getItem(tokenKey)){
