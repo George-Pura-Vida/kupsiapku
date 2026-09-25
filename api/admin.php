@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+// Restored server entry point; recovery configuration belongs in admin-config.php.
 ini_set('display_errors','0');
 set_exception_handler(static function(Throwable $error): void {
     error_log('Admin API failed: '.get_class($error));
