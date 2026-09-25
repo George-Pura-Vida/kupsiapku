@@ -50,6 +50,13 @@ function create_mysql_schema(PDO $pdo): void {
         'CREATE TABLE IF NOT EXISTS invoices (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,payout_request_id BIGINT UNSIGNED NOT NULL UNIQUE,invoice_number VARCHAR(40) NOT NULL UNIQUE,pdf_path VARCHAR(255),status VARCHAR(20) NOT NULL DEFAULT "created",created_at VARCHAR(40) NOT NULL,emailed_at VARCHAR(40),CONSTRAINT fk_invoice_payout FOREIGN KEY(payout_request_id) REFERENCES payout_requests(id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     ];
     foreach ($queries as $sql) $pdo->exec($sql);
+    $columns = [
+        'ico VARCHAR(20) NULL','dic VARCHAR(30) NULL','vat_payer TINYINT(1) NOT NULL DEFAULT 0',
+        'bank_account VARCHAR(60) NULL','iban VARCHAR(50) NULL','bic VARCHAR(20) NULL'
+    ];
+    foreach ($columns as $column) {
+        try {$pdo->exec('ALTER TABLE affiliates ADD COLUMN '.$column);} catch (Throwable $ignored) {}
+    }
 }
 
 function migrate_sqlite_to_mysql(PDO $mysql): void {

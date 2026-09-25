@@ -75,7 +75,24 @@ if ($method === 'GET' && $action === 'profile') {
     $stats = $pdo->prepare('SELECT COUNT(*) registrations, SUM(CASE WHEN status="paid" THEN 1 ELSE 0 END) purchases, COALESCE(SUM(CASE WHEN status="paid" THEN commission_minor ELSE 0 END),0) commission FROM referrals WHERE affiliate_id = ?');
     $stats->execute([$affiliate['id']]);
     $row = $stats->fetch();
-    respond(['ok'=>true,'profile'=>['code'=>$affiliate['code'],'firstName'=>$affiliate['first_name'],'shareUrl'=>'https://kupsiapku.cz/?ref='.rawurlencode($affiliate['code'])],'stats'=>['clicks'=>(int)$clicks->fetchColumn(),'registrations'=>(int)$row['registrations'],'purchases'=>(int)$row['purchases'],'commissionMinor'=>(int)$row['commission']]]);
+    respond(['ok'=>true,'profile'=>['code'=>$affiliate['code'],'firstName'=>$affiliate['first_name'],'shareUrl'=>'https://kupsiapku.cz/?ref='.rawurlencode($affiliate['code'])],'stats'=>['clicks'=>(int)$clicks->fetchColumn(),'registrations'=>(int)$row['registrations'],'purchases'=>(int)$row['purchases'],'commissionMinor'=>(int)$row['commission']],'billing'=>['ico'=>$affiliate['ico']??'','dic'=>$affiliate['dic']??'','vatPayer'=>(bool)($affiliate['vat_payer']??false),'bankAccount'=>$affiliate['bank_account']??'','iban'=>$affiliate['iban']??'','bic'=>$affiliate['bic']??'']]);
+}
+
+
+if ($method === 'POST' && $action === 'billing') {
+    $affiliate = affiliate_from_token($pdo,(string)($_SERVER['HTTP_X_AFFILIATE_TOKEN'] ?? ''));
+    if (!$affiliate) respond(['ok'=>false,'error'=>'Přihlášení partnera není platné.'],401);
+    $data=json_input();
+    $ico=preg_replace('/\D/','',clean_string($data,'ico',20));
+    $dic=strtoupper(clean_string($data,'dic',30));
+    $account=clean_string($data,'bankAccount',60);
+    $iban=strtoupper(str_replace(' ','',clean_string($data,'iban',50)));
+    $bic=strtoupper(str_replace(' ','',clean_string($data,'bic',20)));
+    if ($ico === '' || $account === '') respond(['ok'=>false,'error'=>'Vyplňte IČO a číslo účtu.'],422);
+    if ($iban !== '' && !preg_match('/^[A-Z]{2}[0-9A-Z]{13,32}$/',$iban)) respond(['ok'=>false,'error'=>'IBAN nemá platný formát.'],422);
+    $stmt=$pdo->prepare('UPDATE affiliates SET ico=?,dic=?,vat_payer=?,bank_account=?,iban=?,bic=? WHERE id=?');
+    $stmt->execute([$ico,$dic,!empty($data['vatPayer'])?1:0,$account,$iban,$bic,$affiliate['id']]);
+    respond(['ok'=>true,'message'=>'Fakturační a bankovní údaje byly uloženy.']);
 }
 
 if ($method === 'POST' && $action === 'click') {

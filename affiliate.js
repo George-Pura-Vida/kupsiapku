@@ -19,6 +19,7 @@ function render(profile,stats){
   document.querySelector('#qrDownload').dataset.code=profile.code;
   document.querySelector('#affiliateResult').hidden=false;
   form.hidden=true;
+  if(profile.billing){document.querySelector('#billingIco').value=profile.billing.ico||'';document.querySelector('#billingDic').value=profile.billing.dic||'';document.querySelector('#billingVat').checked=!!profile.billing.vatPayer;document.querySelector('#billingAccount').value=profile.billing.bankAccount||'';document.querySelector('#billingIban').value=profile.billing.iban||'';document.querySelector('#billingBic').value=profile.billing.bic||'';}
   if(stats){
     document.querySelector('#statClicks').textContent=stats.clicks;
     document.querySelector('#statRegistrations').textContent=stats.registrations;
@@ -34,7 +35,7 @@ async function api(action,options={}){
 }
 async function loadProfile(){
   const token=getToken(); if(!token)return;
-  try{const data=await api('profile',{headers:{'X-Affiliate-Token':token}});render(data.profile,data.stats);setStatus('Profil a statistiky jsou načtené ze serveru.','success');}
+  try{const data=await api('profile',{headers:{'X-Affiliate-Token':token}});render({...data.profile,billing:data.billing},data.stats);setStatus('Profil a statistiky jsou načtené ze serveru.','success');}
   catch(error){forgetToken();setStatus(error.message,'error');}
 }
 form.addEventListener('submit',async event=>{
@@ -51,6 +52,7 @@ document.querySelector('#qrDownload').addEventListener('click',event=>{
 });
 document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=getToken();if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
+document.querySelector('#billingForm').addEventListener('submit',async event=>{event.preventDefault();const token=getToken();if(!token){setStatus('Nejdřív se přihlaste.','error');return;}const payload={ico:event.currentTarget.elements.ico.value,dic:event.currentTarget.elements.dic.value,vatPayer:event.currentTarget.elements.vatPayer.checked,bankAccount:event.currentTarget.elements.bankAccount.value,iban:event.currentTarget.elements.iban.value,bic:event.currentTarget.elements.bic.value};try{const data=await api('billing',{method:'POST',headers:{'X-Affiliate-Token':token},body:JSON.stringify(payload)});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}});
 document.querySelector('#loginButton').addEventListener('click',async()=>{const email=document.querySelector('#loginEmail').value.trim();if(!email){setStatus('Zadejte registrační e-mail.','error');return;}setStatus('Odesílám přihlašovací odkaz…');try{const data=await api('login',{method:'POST',body:JSON.stringify({email})});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}});
 const fragment=new URLSearchParams(location.hash.slice(1));const loginToken=fragment.get('token');if(loginToken){saveToken(loginToken);history.replaceState(null,'',location.pathname+location.search);}
 const publicCode=new URLSearchParams(location.search).get('code');
