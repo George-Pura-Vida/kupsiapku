@@ -31,7 +31,7 @@ if ($method === 'POST' && $action === 'register') {
         'From: Kup si apku <info@jirijanousek.cz>',
         'Reply-To: info@jirijanousek.cz',
     ];
-    $emailSent = @mail($email, $subject, $body, implode("\\r\\n", $headers));
+    $emailSent = @mail($email, $subject, $body, implode("\r\n", $headers));
     respond(['ok'=>true,'token'=>$token,'emailSent'=>$emailSent,'profile'=>['code'=>$code,'firstName'=>clean_string($data,'firstName'),'shareUrl'=>$shareUrl]] ,201);
 }
 
