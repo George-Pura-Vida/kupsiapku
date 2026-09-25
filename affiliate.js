@@ -11,8 +11,8 @@ function render(profile,stats){
   preview.textContent=profile.code;
   linkEl.textContent=profile.shareUrl;
   document.querySelector('#sharePreview').textContent=profile.firstName+', toto je tvůj osobní doporučitelský odkaz.';
-  qrEl.src=qrUrl(profile.shareUrl); qrEl.alt='QR kód doporučitelského odkazu '+profile.code;
-  document.querySelector('#qrDownload').href=qrUrl(profile.shareUrl);
+  qrEl.src=qrData(profile.shareUrl); qrEl.alt='QR kód doporučitelského odkazu '+profile.code;
+  document.querySelector('#qrDownload').href=qrData(profile.shareUrl);
   document.querySelector('#affiliateResult').hidden=false;
   form.hidden=true;
   if(stats){
