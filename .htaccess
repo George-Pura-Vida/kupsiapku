@@ -13,3 +13,8 @@ RewriteRule ^index\.html$ / [R=301,L]
 
 # Local error document preserves the original HTTP 404 status.
 ErrorDocument 404 /404.html
+
+# Donation QR account in IBAN+BIC format required by the Czech SPD standard.
+<IfModule mod_env.c>
+SetEnv DONATION_ACCOUNT CZ8220100000000223366333+FIOBCZPPXXX
+</IfModule>
