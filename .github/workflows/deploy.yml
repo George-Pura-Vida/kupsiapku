@@ -68,9 +68,9 @@ jobs:
           done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
           grep -q 'name="keywords"' /tmp/home-page.html
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/doporucit.html?deploy=${GITHUB_SHA}" | grep -q 'affiliate.js?v=20260925-8'
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/doporucit.html?deploy=${GITHUB_SHA}" | grep -q 'affiliate.js?v=20260925-9'
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/affiliate.js?v=${GITHUB_SHA}" --output /tmp/affiliate.js
-          grep -q 'qrData(profile.shareUrl)' /tmp/affiliate.js
+          grep -q 'drawQr(qrEl,profile.shareUrl)' /tmp/affiliate.js
           if grep -q 'qrUrl(profile.shareUrl)' /tmp/affiliate.js; then echo "Stale QR function found"; exit 1; fi
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/prispet.html?deploy=${GITHUB_SHA}" | grep -q 'id="donationForm"'
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'

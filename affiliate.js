@@ -10,13 +10,13 @@ function saveToken(token){sessionToken=token;try{localStorage.setItem(tokenKey,t
 function forgetToken(){sessionToken='';try{localStorage.removeItem(tokenKey);}catch(_){}}
 
 function setStatus(message,type='info'){document.querySelectorAll('.affiliateStatus').forEach(el=>{el.textContent=message;el.className='formStatus affiliateStatus '+type;});}
-function qrData(value){const code=qrcode(0,'M');code.addData(value);code.make();return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(code.createSvgTag({cellSize:6,margin:4,scalable:true}));}
+function drawQr(canvas,value){const code=qrcode(0,'M');code.addData(value);code.make();const modules=code.getModuleCount();const quiet=4;const total=modules+quiet*2;const size=1024;const cell=size/total;canvas.width=size;canvas.height=size;const context=canvas.getContext('2d');context.imageSmoothingEnabled=false;context.fillStyle='#fff';context.fillRect(0,0,size,size);context.fillStyle='#000';for(let row=0;row<modules;row++){for(let col=0;col<modules;col++){if(code.isDark(row,col)){const x=Math.floor((col+quiet)*cell);const y=Math.floor((row+quiet)*cell);const w=Math.ceil((col+quiet+1)*cell)-x;const h=Math.ceil((row+quiet+1)*cell)-y;context.fillRect(x,y,w,h);}}}}
 function render(profile,stats){
   preview.textContent=profile.code;
   linkEl.textContent=profile.shareUrl;
   document.querySelector('#sharePreview').textContent=profile.firstName+', toto je tvůj osobní doporučitelský odkaz.';
-  qrEl.src=qrData(profile.shareUrl); qrEl.alt='QR kód doporučitelského odkazu '+profile.code;
-  document.querySelector('#qrDownload').href=qrData(profile.shareUrl); document.querySelector('#qrDownload').dataset.code=profile.code;
+  drawQr(qrEl,profile.shareUrl); qrEl.setAttribute('aria-label','QR kód doporučitelského odkazu '+profile.code);
+  document.querySelector('#qrDownload').dataset.code=profile.code;
   document.querySelector('#affiliateResult').hidden=false;
   form.hidden=true;
   if(stats){
@@ -47,14 +47,7 @@ document.querySelector('#copyLink').addEventListener('click',async()=>{await nav
 document.querySelector('#qrDownload').addEventListener('click',event=>{
   event.preventDefault();
   const downloadCode=event.currentTarget.dataset.code||'kod';
-  const image=new Image();
-  image.onload=()=>{
-    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
-    const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,1024,1024);context.drawImage(image,0,0,1024,1024);
-    canvas.toBlob(blob=>{if(!blob){setStatus('PNG se nepodařilo vytvořit.','error');return;}const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='kupsiapku-qr-'+downloadCode+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('QR byl stažen jako PNG.','success');},'image/png');
-  };
-  image.onerror=()=>setStatus('QR se nepodařilo převést do PNG.','error');
-  image.src=qrEl.src;
+  qrEl.toBlob(blob=>{if(!blob){setStatus('PNG se nepodařilo vytvořit.','error');return;}const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='kupsiapku-qr-'+downloadCode+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('QR byl stažen jako PNG.','success');},'image/png');
 });
 document.querySelector('#resendEmail').addEventListener('click',async event=>{const button=event.currentTarget;const token=getToken();if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}button.disabled=true;setStatus('Odesílám e-mail…');try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}finally{button.disabled=false;}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
