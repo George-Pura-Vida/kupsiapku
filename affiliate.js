@@ -6,7 +6,7 @@ const qrEl=document.querySelector('#affiliateQr');
 const tokenKey='ksa_affiliate_token';
 
 function setStatus(message,type='info'){statusEl.textContent=message;statusEl.className='formStatus '+type;}
-function qrUrl(value){return 'https://quickchart.io/qr?size=320&margin=2&format=svg&text='+encodeURIComponent(value);}
+function qrData(value){const code=qrcode(0,'M');code.addData(value);code.make();return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(code.createSvgTag({cellSize:6,margin:4,scalable:true}));}
 function render(profile,stats){
   preview.textContent=profile.code;
   linkEl.textContent=profile.shareUrl;
