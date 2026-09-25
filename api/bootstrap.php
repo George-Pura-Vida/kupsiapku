@@ -38,6 +38,8 @@ function create_sqlite_schema(PDO $pdo): void {
     $pdo->exec('CREATE TABLE IF NOT EXISTS referral_clicks (id INTEGER PRIMARY KEY AUTOINCREMENT,affiliate_id INTEGER NOT NULL,visitor_hash TEXT NOT NULL,landing_page TEXT,created_at TEXT NOT NULL,UNIQUE(affiliate_id, visitor_hash),FOREIGN KEY(affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE)');
     $pdo->exec('CREATE TABLE IF NOT EXISTS referrals (id INTEGER PRIMARY KEY AUTOINCREMENT,affiliate_id INTEGER NOT NULL,order_reference TEXT NOT NULL UNIQUE,amount_minor INTEGER NOT NULL DEFAULT 0,commission_minor INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL DEFAULT "pending",created_at TEXT NOT NULL,FOREIGN KEY(affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE)');
     $pdo->exec('CREATE TABLE IF NOT EXISTS donations (id INTEGER PRIMARY KEY AUTOINCREMENT,public_id TEXT NOT NULL UNIQUE,amount_minor INTEGER NOT NULL,donor_name TEXT,donor_email TEXT,message TEXT,variable_symbol TEXT NOT NULL UNIQUE,status TEXT NOT NULL DEFAULT "pending",created_at TEXT NOT NULL)');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY AUTOINCREMENT,order_number TEXT NOT NULL UNIQUE,customer_email TEXT NOT NULL,customer_name TEXT NOT NULL,items_json TEXT NOT NULL,total_minor INTEGER NOT NULL,currency TEXT NOT NULL DEFAULT "CZK",referral_code TEXT,status TEXT NOT NULL DEFAULT "awaiting_payment",created_at TEXT NOT NULL,paid_at TEXT)');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT,username TEXT NOT NULL UNIQUE,password_salt TEXT NOT NULL,password_hash TEXT NOT NULL,updated_at TEXT NOT NULL)');
 }
 
 function create_mysql_schema(PDO $pdo): void {
@@ -47,7 +49,9 @@ function create_mysql_schema(PDO $pdo): void {
         'CREATE TABLE IF NOT EXISTS referrals (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,affiliate_id BIGINT UNSIGNED NOT NULL,order_reference VARCHAR(100) NOT NULL UNIQUE,amount_minor BIGINT NOT NULL DEFAULT 0,commission_minor BIGINT NOT NULL DEFAULT 0,status VARCHAR(20) NOT NULL DEFAULT "pending",created_at VARCHAR(40) NOT NULL,KEY idx_referrals_affiliate_status(affiliate_id,status),CONSTRAINT fk_referral_affiliate FOREIGN KEY(affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
         'CREATE TABLE IF NOT EXISTS donations (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,public_id VARCHAR(30) NOT NULL UNIQUE,amount_minor BIGINT NOT NULL,donor_name VARCHAR(190),donor_email VARCHAR(190),message TEXT,variable_symbol VARCHAR(20) NOT NULL UNIQUE,status VARCHAR(20) NOT NULL DEFAULT "pending",created_at VARCHAR(40) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
         'CREATE TABLE IF NOT EXISTS payout_requests (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,affiliate_id BIGINT UNSIGNED NOT NULL,amount_minor BIGINT NOT NULL,currency CHAR(3) NOT NULL DEFAULT "CZK",status VARCHAR(20) NOT NULL DEFAULT "requested",requested_at VARCHAR(40) NOT NULL,approved_at VARCHAR(40),paid_at VARCHAR(40),CONSTRAINT fk_payout_affiliate FOREIGN KEY(affiliate_id) REFERENCES affiliates(id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
-        'CREATE TABLE IF NOT EXISTS invoices (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,payout_request_id BIGINT UNSIGNED NOT NULL UNIQUE,invoice_number VARCHAR(40) NOT NULL UNIQUE,pdf_path VARCHAR(255),status VARCHAR(20) NOT NULL DEFAULT "created",created_at VARCHAR(40) NOT NULL,emailed_at VARCHAR(40),CONSTRAINT fk_invoice_payout FOREIGN KEY(payout_request_id) REFERENCES payout_requests(id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+        'CREATE TABLE IF NOT EXISTS invoices (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,payout_request_id BIGINT UNSIGNED NOT NULL UNIQUE,invoice_number VARCHAR(40) NOT NULL UNIQUE,pdf_path VARCHAR(255),status VARCHAR(20) NOT NULL DEFAULT "created",created_at VARCHAR(40) NOT NULL,emailed_at VARCHAR(40),CONSTRAINT fk_invoice_payout FOREIGN KEY(payout_request_id) REFERENCES payout_requests(id) ON DELETE RESTRICT) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        'CREATE TABLE IF NOT EXISTS orders (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,order_number VARCHAR(40) NOT NULL UNIQUE,customer_email VARCHAR(190) NOT NULL,customer_name VARCHAR(190) NOT NULL,items_json TEXT NOT NULL,total_minor BIGINT NOT NULL,currency CHAR(3) NOT NULL DEFAULT "CZK",referral_code VARCHAR(50),status VARCHAR(30) NOT NULL DEFAULT "awaiting_payment",created_at VARCHAR(40) NOT NULL,paid_at VARCHAR(40),KEY idx_orders_status(status),KEY idx_orders_referral(referral_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci',
+        'CREATE TABLE IF NOT EXISTS admin_users (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,username VARCHAR(80) NOT NULL UNIQUE,password_salt CHAR(32) NOT NULL,password_hash CHAR(64) NOT NULL,updated_at VARCHAR(40) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
     ];
     foreach ($queries as $sql) $pdo->exec($sql);
     $columns = [
@@ -80,13 +84,17 @@ function migrate_sqlite_to_mysql(PDO $mysql): void {
     }
 }
 
-function db(): PDO {
+function db(bool $strict = false): PDO {
     static $pdo;
     if ($pdo instanceof PDO) return $pdo;
     $host = trim((string)getenv('DB_HOST'));
     $name = trim((string)getenv('DB_NAME'));
     $user = trim((string)getenv('DB_USER'));
     $password = (string)getenv('DB_PASSWORD');
+    $pin = $strict && is_file(__DIR__.'/data/admin-database.json') ? json_decode((string)file_get_contents(__DIR__.'/data/admin-database.json'),true) : null;
+    if ($strict && is_file(__DIR__.'/data/admin-database.json') && (!is_array($pin) || !in_array($pin['driver']??'', ['mysql','sqlite'],true))) respond(['ok'=>false,'error'=>'Konfigurace databáze administrace je neplatná.'],503);
+    if (($pin['driver']??'') === 'sqlite') { $host=''; $name=''; $user=''; $password=''; }
+    if (($pin['driver']??'') === 'mysql' && (!hash_equals($pin['identity']??'',hash('sha256',$host.'|'.(getenv('DB_PORT')?:3306).'|'.$name)) || $user==='' || $password==='')) respond(['ok'=>false,'error'=>'Konfigurace databáze administrace se změnila.'],503);
     if ($host !== '' && $name !== '' && $user !== '' && $password !== '') {
         try {
             $port = (int)(getenv('DB_PORT') ?: 3306);
@@ -101,6 +109,7 @@ function db(): PDO {
         } catch (Throwable $error) {
             error_log('MySQL connection failed: '.$error->getMessage());
             $pdo = null;
+            if (($pin['driver']??'') === 'mysql') respond(['ok'=>false,'error'=>'Databáze administrace není dostupná. Zkuste to později.'],503);
         }
     }
     $dir = __DIR__ . '/data';

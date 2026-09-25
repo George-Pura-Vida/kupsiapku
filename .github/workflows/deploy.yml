@@ -12,6 +12,18 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Set up PHP for admin security tests
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, mbstring
+      - name: Validate admin authentication before deployment
+        run: |
+          php -l api/admin.php
+          php -l api/admin-auth.php
+          php -l api/bootstrap.php
+          node --check admin.js
+          python3 tests/admin_auth_test.py
       - name: Validate deployment secrets
         shell: bash
         env:
@@ -41,6 +53,11 @@ jobs:
             **/.github/**
             **/database/**
             **/.env*
+            **/admin-config.php
+            **/api/data/*.sqlite*
+            **/api/data/admin-database.json
+            **/tests/**
+            **/docs/**
             CNAME
             README.md
       - name: Verify production HTTP and HTTPS
@@ -75,3 +92,7 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/prispet.html?deploy=${GITHUB_SHA}" | grep -q 'id="donationForm"'
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'
           echo "Production verification OK"
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/admin.html?deploy=${GITHUB_SHA}" | grep -q 'id="forgotForm"'
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
+          status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
+          test "$status" = 401

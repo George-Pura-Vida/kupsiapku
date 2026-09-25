@@ -30,3 +30,8 @@ Header set Cache-Control "no-cache, must-revalidate"
 <FilesMatch "^\\.env">
 Require all denied
 </FilesMatch>
+
+# Server-only administrator recovery configuration.
+<Files "admin-config.php">
+Require all denied
+</Files>
