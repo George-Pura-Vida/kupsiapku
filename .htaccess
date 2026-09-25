@@ -10,3 +10,6 @@ RewriteRule ^index\.html$ / [R=301,L]
 </IfModule>
 
 # HTTPS is handled by Webkitty/CDN. Do not redirect HTTPS here.
+
+# Local error document preserves the original HTTP 404 status.
+ErrorDocument 404 /404.html

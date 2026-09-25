@@ -49,4 +49,23 @@ jobs:
           sleep 5
           curl --fail --silent --show-error --location --max-time 30 https://kupsiapku.cz/ > /dev/null
           curl --fail --silent --show-error --location --max-time 30 http://kupsiapku.cz/ > /dev/null
+          for path in "/404.html" "/this-page-should-not-exist-${GITHUB_SHA}" "/missing-${GITHUB_SHA}/nested/page"; do
+            expected=404
+            [[ "$path" == "/404.html" ]] && expected=200
+            verified=false
+            for attempt in {1..6}; do
+              status=$(curl --silent --show-error --max-time 30 --output /tmp/error-page.html --write-out '%{http_code}' "https://kupsiapku.cz${path}?deploy=${GITHUB_SHA}") || status=000
+              if [[ "$status" == "$expected" ]] &&
+                 grep -q 'id="error-title"' /tmp/error-page.html &&
+                 grep -q 'name="robots" content="noindex,follow"' /tmp/error-page.html; then
+                verified=true
+                break
+              fi
+              sleep 10
+            done
+            [[ "$verified" == true ]] || { echo "Failed: $path expected $expected, got $status or wrong page content"; exit 1; }
+            echo "Verified $path: HTTP $status and custom error page"
+          done
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
+          grep -q 'name="keywords"' /tmp/home-page.html
           echo "Production verification OK"
