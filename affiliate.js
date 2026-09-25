@@ -36,10 +36,15 @@ async function loadProfile(){
 form.addEventListener('submit',async event=>{
   event.preventDefault(); const button=form.querySelector('button[type=submit]'); button.disabled=true; setStatus('Vytvářím bezpečný partnerský profil…');
   const payload=Object.fromEntries(new FormData(form).entries()); payload.privacy=!!form.elements.privacy.checked;
-  try{const data=await api('register',{method:'POST',body:JSON.stringify(payload)});localStorage.setItem(tokenKey,data.token);render(data.profile,{clicks:0,registrations:0,purchases:0,commissionMinor:0});setStatus('Hotovo. Kód i QR jsou jedinečné a uložené na serveru.','success');}
+  try{const data=await api('register',{method:'POST',body:JSON.stringify(payload)});localStorage.setItem(tokenKey,data.token);render(data.profile,{clicks:0,registrations:0,purchases:0,commissionMinor:0});setStatus(data.emailSent?'Hotovo. Kód, QR i potvrzovací e-mail jsou připravené.':'Kód a QR jsou připravené. E-mail se nepodařilo odeslat; osobní odkaz si uložte.','success');}
   catch(error){setStatus(error.message,'error');button.disabled=false;}
 });
 document.querySelector('#copyLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(linkEl.textContent);setStatus('Odkaz je zkopírovaný.','success');});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
-loadProfile();
+const publicCode=new URLSearchParams(location.search).get('code');
+if(publicCode&&!localStorage.getItem(tokenKey)){
+  const shareUrl='https://kupsiapku.cz/?ref='+encodeURIComponent(publicCode);
+  render({code:publicCode,firstName:'Partner',shareUrl},{clicks:0,registrations:0,purchases:0,commissionMinor:0});
+  setStatus('Veřejný náhled kódu. Statistiky jsou dostupné pouze na registračním zařízení.');
+}else loadProfile();
 

@@ -18,3 +18,10 @@ ErrorDocument 404 /404.html
 <IfModule mod_env.c>
 SetEnv DONATION_ACCOUNT CZ8220100000000223366333+FIOBCZPPXXX
 </IfModule>
+
+# Always revalidate pages after automatic deployment.
+<IfModule mod_headers.c>
+<FilesMatch "\\.(html?|js|css)$">
+Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
+</IfModule>

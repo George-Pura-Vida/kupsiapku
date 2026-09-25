@@ -21,7 +21,18 @@ if ($method === 'POST' && $action === 'register') {
     $code = unique_code($pdo, clean_string($data,'firstName'), clean_string($data,'lastName'));
     $stmt = $pdo->prepare('INSERT INTO affiliates(code,access_token_hash,first_name,last_name,email,phone,street,zip,city,country,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)');
     $stmt->execute([$code,hash('sha256',$token),clean_string($data,'firstName'),clean_string($data,'lastName'),$email,clean_string($data,'phone'),clean_string($data,'street'),clean_string($data,'zip'),clean_string($data,'city'),clean_string($data,'country'),gmdate('c')]);
-    respond(['ok'=>true,'token'=>$token,'profile'=>['code'=>$code,'firstName'=>clean_string($data,'firstName'),'shareUrl'=>'https://kupsiapku.cz/?ref='.rawurlencode($code)]] ,201);
+    $shareUrl = 'https://kupsiapku.cz/?ref='.rawurlencode($code);
+    $profileUrl = 'https://kupsiapku.cz/doporucit.html?code='.rawurlencode($code);
+    $subject = '=?UTF-8?B?'.base64_encode('Tvůj doporučitelský kód | Kup si apku').'?=';
+    $body = '<!doctype html><html lang="cs"><body style="font-family:Arial,sans-serif;color:#102a56;line-height:1.6"><h1>Tvůj doporučitelský kód je připravený</h1><p>Ahoj '.htmlspecialchars(clean_string($data,'firstName'),ENT_QUOTES,'UTF-8').',</p><p>osobní kód: <strong>'.htmlspecialchars($code,ENT_QUOTES,'UTF-8').'</strong></p><p><a href="'.htmlspecialchars($shareUrl,ENT_QUOTES,'UTF-8').'" style="display:inline-block;padding:12px 18px;background:#ef2d63;color:#fff;text-decoration:none;border-radius:10px">Otevřít můj doporučitelský odkaz</a></p><p>QR kód a statistiky najdeš na stránce programu v zařízení, kde ses registroval. Veřejný QR náhled: <a href="'.htmlspecialchars($profileUrl,ENT_QUOTES,'UTF-8').'">'.htmlspecialchars($profileUrl,ENT_QUOTES,'UTF-8').'</a></p><p>Kup si apku</p></body></html>';
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'From: Kup si apku <info@jirijanousek.cz>',
+        'Reply-To: info@jirijanousek.cz',
+    ];
+    $emailSent = @mail($email, $subject, $body, implode("\\r\\n", $headers));
+    respond(['ok'=>true,'token'=>$token,'emailSent'=>$emailSent,'profile'=>['code'=>$code,'firstName'=>clean_string($data,'firstName'),'shareUrl'=>$shareUrl]] ,201);
 }
 
 if ($method === 'GET' && $action === 'profile') {
