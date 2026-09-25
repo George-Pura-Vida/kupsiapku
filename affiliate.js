@@ -40,6 +40,17 @@ form.addEventListener('submit',async event=>{
   catch(error){setStatus(error.message,'error');button.disabled=false;}
 });
 document.querySelector('#copyLink').addEventListener('click',async()=>{await navigator.clipboard.writeText(linkEl.textContent);setStatus('Odkaz je zkopírovaný.','success');});
+document.querySelector('#qrDownload').addEventListener('click',event=>{
+  event.preventDefault();
+  const image=new Image();
+  image.onload=()=>{
+    const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
+    const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,1024,1024);context.drawImage(image,0,0,1024,1024);
+    canvas.toBlob(blob=>{if(!blob){setStatus('PNG se nepodařilo vytvořit.','error');return;}const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='kupsiapku-qr-'+(event.currentTarget.dataset.code||'kod')+'.png';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);setStatus('QR byl stažen jako PNG.','success');},'image/png');
+  };
+  image.onerror=()=>setStatus('QR se nepodařilo převést do PNG.','error');
+  image.src=qrEl.src;
+});
 document.querySelector('#resendEmail').addEventListener('click',async()=>{const token=localStorage.getItem(tokenKey);if(!token){setStatus('E-mail lze znovu poslat jen z registračního zařízení.','error');return;}try{const data=await api('resend',{method:'POST',headers:{'X-Affiliate-Token':token},body:'{}'});setStatus(data.message,'success');}catch(error){setStatus(error.message,'error');}});
 document.querySelector('#nativeShare').addEventListener('click',async()=>{const url=linkEl.textContent;if(navigator.share)await navigator.share({title:'Kup si apku',text:'Mrkni na praktické aplikace.',url});else{await navigator.clipboard.writeText(url);setStatus('Odkaz je zkopírovaný.','success');}});
 const publicCode=new URLSearchParams(location.search).get('code');
