@@ -12,6 +12,24 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Render My Finances shared headers
+        shell: bash
+        run: |
+          python3 tools/render-header.py
+          python3 tools/render-header.py --check
+          changed="$(git diff --name-only)"
+          if [ -n "$changed" ]; then
+            echo "Files changed by render-header.py:"
+            echo "$changed"
+            unexpected="$(echo "$changed" | grep -v -E '^(moje-finance\.html|en/my-finances\.html)$' || true)"
+            if [ -n "$unexpected" ]; then
+              echo "::error::render-header.py changed unexpected files:"
+              echo "$unexpected"
+              exit 1
+            fi
+          fi
+          git diff --check
+          git diff -- moje-finance.html en/my-finances.html
       - name: Check shared navigation
         run: |
           python3 tools/render-header.py --check
