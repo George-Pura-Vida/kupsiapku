@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+/vendor/
+node_modules/
+*.log
+.DS_Store
+/api/admin-config.php
+/api/data/*.sqlite*
+/api/data/admin-database.json
