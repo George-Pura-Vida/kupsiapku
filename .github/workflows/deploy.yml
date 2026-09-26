@@ -156,6 +156,6 @@ jobs:
           node --check /tmp/app.js
           grep -F 'kupsiapku_cart' /tmp/app.js >/dev/null
           grep -F 'portfolio' /tmp/app.js >/dev/null
-          grep -F 'portfolio-prehled.jpg' /tmp/moje-portfolio.html >/dev/null
+          grep -F 'portfolio-prehled-sharp.webp' /tmp/moje-portfolio.html >/dev/null
           grep -F 'portfolio-trhy.jpg' /tmp/en-my-portfolio.html >/dev/null
           echo 'Production validation OK'
