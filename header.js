@@ -20,6 +20,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false,true)}
 document.addEventListener('click',e=>{if(!header.contains(e.target)&&mobile.matches)setOpen(false)});
 mobile.addEventListener('change',()=>setOpen(false));
 if(product){
+  const hero=document.querySelector('.hero');
+  if(hero&&!hero.querySelector('.price')){const price=document.createElement('div');price.className='price';price.textContent=en?'CZK 500':'500 Kč';const anchor=hero.querySelector('.actions,.benefits');if(anchor)hero.insertBefore(price,anchor)}
   const actions=document.querySelector('.hero .actions');
   if(actions){const more=actions.querySelector('a[href^="#"]');actions.innerHTML=`<button class="btn primary" type="button" data-cart-add="${product}">🛒 ${en?'Add to cart':'Přidat do košíku'}</button><button class="btn secondary" type="button" data-cart-buy="${product}">⚡ ${en?'Buy now':'Koupit nyní'}</button>`;if(more)actions.append(more)}
   if(!document.querySelector('script[src="/cart.js"]')){const s=document.createElement('script');s.src='/cart.js';s.defer=true;document.body.append(s)}
