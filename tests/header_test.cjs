@@ -24,7 +24,7 @@ const server = http.createServer((req,res) => {
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.addInitScript(() => localStorage.setItem('ksa_cookie','1'));
-    const widths = [320,375,768,800,801,1024,1250,1251,1366,1920];
+    const widths = [320,375,768,800,801,1024,1100,1101,1194,1250,1251,1366,1920];
     let checked = 0;
     for (const file of files) {
       await page.goto(base+'/'+file,{waitUntil:'load'});
@@ -44,7 +44,7 @@ const server = http.createServer((req,res) => {
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const toggle=page.locator('.siteHeader-toggle');
         const nav=page.locator('.siteHeader-nav');
-        if (width <= 800) {
+        if (width <= 1100) {
           await toggle.focus();
           await page.keyboard.press('Enter');
           assert.equal(await toggle.getAttribute('aria-expanded'),'true',file);
@@ -77,7 +77,10 @@ const server = http.createServer((req,res) => {
           return problems;
         });
         assert.deepEqual(bad,[],`${file} @ ${width}`);
-        if (width <=800) await page.keyboard.press('Escape');
+        if (width <=1100) await page.keyboard.press('Escape');
+        await page.evaluate(() => window.scrollTo({top:600,behavior:'instant'}));
+        assert.equal(await page.locator('.siteHeader').evaluate(h=>Math.round(h.getBoundingClientRect().top)),0,`${file} @ ${width}: header lost on scroll`);
+        await page.evaluate(() => window.scrollTo({top:0,behavior:'instant'}));
         checked++;
       }
     }
@@ -110,7 +113,7 @@ const server = http.createServer((req,res) => {
       for (const width of [375,1024,1366]) {
         await page.setViewportSize({width,height:900});
         await page.goto(base+'/index.html');
-        if(width<=800) await page.locator('.siteHeader-toggle').click();
+        if(width<=1100) await page.locator('.siteHeader-toggle').click();
         await page.screenshot({path:path.join(process.env.HEADER_SCREENSHOTS,`header-${width}.png`)});
       }
     }

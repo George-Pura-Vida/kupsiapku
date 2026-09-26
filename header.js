@@ -4,7 +4,7 @@
   if (!header) return;
   const toggle = header.querySelector('.siteHeader-toggle');
   const nav = header.querySelector('.siteHeader-nav');
-  const mobile = window.matchMedia('(max-width:800px)');
+  const mobile = window.matchMedia('(max-width:1100px)');
   const english = document.documentElement.lang.startsWith('en');
   const setOpen = (open, restoreFocus = false) => {
     toggle.setAttribute('aria-expanded', String(open));
