@@ -11,9 +11,7 @@
     * { box-sizing: border-box; }
     body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; color: #102a56; background: radial-gradient(ellipse at 10% 25%, #dff5ff, transparent 50%), radial-gradient(ellipse at 90% 70%, #ffe6f2, transparent 50%), #f8fbff; }
     a { color: inherit; }
-    header, footer { max-width: 1120px; margin: auto; padding: 28px 24px; }
-    .brand { text-decoration: none; font-size: 20px; font-weight: 800; letter-spacing: .04em; }
-    .brand b { color: #d51e54; }
+    footer { max-width: 1120px; margin: auto; padding: 28px 24px; }
     main { min-height: 72vh; display: grid; place-items: center; padding: 24px; }
     .card { width: 100%; max-width: 780px; padding: clamp(28px, 6vw, 64px); text-align: center; border: 1px solid #fff; border-radius: 32px; background: #ffffffed; box-shadow: 0 24px 80px #102a5610; }
     .code { margin: 0; font-size: clamp(92px, 20vw, 164px); font-weight: 850; letter-spacing: -.07em; line-height: 1; color: #102a56; }
@@ -29,11 +27,23 @@
     .help, footer { font-size: 14px; line-height: 1.6; color: #526782; }
     .help a { text-underline-offset: 3px; }
     footer { text-align: center; }
-    @media (max-width: 480px) { header { padding: 22px 20px; } main { padding: 16px; } .card { border-radius: 24px; } .actions { flex-direction: column; } }
+    @media (max-width: 480px) { main { padding: 16px; } .card { border-radius: 24px; } .actions { flex-direction: column; } }
   </style>
-</head>
+<link rel="stylesheet" href="/header.css?v=20260926-1">
+<script src="/header.js?v=20260926-1" defer></script></head>
 <body>
-  <header><a class="brand" href="/"><span aria-hidden="true">🚀</span> KUP SI <b>APKU</b></a></header>
+  <header class="siteHeader">
+  <div class="siteHeader-inner">
+    <a class="siteHeader-brand" href="/"><span aria-hidden="true">🚀</span> KUP SI <b>APKU</b></a>
+
+    <button class="siteHeader-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otevřít menu" hidden><span aria-hidden="true">☰</span></button>
+    <nav class="siteHeader-nav" id="site-navigation" aria-label="Hlavní navigace">
+      <a href="/index.html#apps">Aplikace</a>
+      <a href="/index.html#faq">FAQ</a>
+      <a href="/index.html#checkout">Objednat</a>
+    </nav>
+  </div>
+</header>
   <main>
     <section class="card" aria-labelledby="error-title">
       <p class="code" aria-hidden="true">4<span>0</span>4</p>

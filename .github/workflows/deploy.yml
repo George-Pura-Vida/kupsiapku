@@ -12,6 +12,10 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Check shared navigation
+        run: |
+          python3 tools/render-header.py --check
+          node --check header.js
       - name: Apply SEO metadata to localized pages
         run: python3 tools/apply-seo-head.py
       - name: Audit generated SEO metadata before deployment
