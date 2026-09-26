@@ -12,7 +12,7 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Czech and English My Finances homepage links safely
+      - name: Patch Czech and English My Finances and My Health homepage links safely
         shell: bash
         run: |
           python3 - <<'PY'
@@ -20,35 +20,65 @@ jobs:
           import subprocess
 
           patches = [
-              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech', True),
-              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English', False),
+              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech My Finances', 'onclick="add(\'finance\')"'),
+              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English My Finances', None),
+              (Path('index.html'), 'href="aplikace-zdravi.html"', 'href="/moje-zdravi.html"', 'Czech My Health', 'onclick="add(\'zdravi\')"'),
+              (Path('en/index.html'), 'href="aplikace-zdravi.html"', 'href="/en/my-health.html"', 'English My Health', None),
           ]
-          checkout = 'onclick="add(\'finance\')"'
 
-          for path, old, new, label, verify_checkout in patches:
-              before = path.read_text(encoding='utf-8')
+          originals = {}
+          expected = {}
+          for path, _, _, _, _ in patches:
+              if path not in originals:
+                  text = path.read_text(encoding='utf-8')
+                  originals[path] = text
+                  expected[path] = text
+
+          for path, old, new, label, preserved_marker in patches:
+              before = expected[path]
               if before.count(old) != 1:
-                  raise SystemExit(f'{label}: expected exactly 1 old My Finances href, found {before.count(old)}')
+                  raise SystemExit(f'{label}: expected exactly 1 old href before patch, found {before.count(old)}')
               if before.count(new) != 0:
-                  raise SystemExit(f'{label}: expected 0 new My Finances hrefs before patch, found {before.count(new)}')
-              checkout_before = before.count(checkout)
-              if verify_checkout and checkout_before < 1:
-                  raise SystemExit(f'{label}: finance checkout button missing before patch')
+                  raise SystemExit(f'{label}: expected 0 new hrefs before patch, found {before.count(new)}')
+
+              marker_before = before.count(preserved_marker) if preserved_marker else None
+              if preserved_marker and marker_before < 1:
+                  raise SystemExit(f'{label}: required checkout marker missing before patch: {preserved_marker}')
 
               after = before.replace(old, new, 1)
               if after.count(old) != 0 or after.count(new) != 1:
-                  raise SystemExit(f'{label}: homepage href replacement validation failed')
-              if verify_checkout and after.count(checkout) != checkout_before:
-                  raise SystemExit(f'{label}: finance checkout changed during patch')
+                  raise SystemExit(f'{label}: href replacement validation failed after patch')
+              if preserved_marker and after.count(preserved_marker) != marker_before:
+                  raise SystemExit(f'{label}: checkout marker changed during patch: {preserved_marker}')
 
+              expected[path] = after
+              suffix = f'; preserved {preserved_marker}' if preserved_marker else ''
+              print(f'{label}: exactly one href replaced{suffix}')
+
+          for path, after in expected.items():
               committed = subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'], text=True)
-              expected_from_head = committed.replace(old, new, 1)
-              if after != expected_from_head:
-                  raise SystemExit(f'{label}: homepage differs from HEAD by more than the intended href replacement')
-
+              if committed != originals[path]:
+                  raise SystemExit(f'{path}: working copy differed from HEAD before safe patch')
               path.write_text(after, encoding='utf-8')
-              suffix = '; finance checkout preserved' if verify_checkout else ''
-              print(f'{label} safe homepage patch OK: exactly one href replaced{suffix}')
+              written = path.read_text(encoding='utf-8')
+              if written != after:
+                  raise SystemExit(f'{path}: content differs after write')
+
+          # Final post-patch validation: exact targets and Czech checkout handlers.
+          cs = Path('index.html').read_text(encoding='utf-8')
+          en = Path('en/index.html').read_text(encoding='utf-8')
+          checks = [
+              ('Czech My Finances target', cs.count('href="/moje-finance.html"') == 1),
+              ('English My Finances target', en.count('href="/en/my-finances.html"') == 1),
+              ('Czech My Health target', cs.count('href="/moje-zdravi.html"') == 1),
+              ('English My Health target', en.count('href="/en/my-health.html"') == 1),
+              ('Czech finance checkout preserved', cs.count('onclick="add(\'finance\')"') == originals[Path('index.html')].count('onclick="add(\'finance\')"')),
+              ('Czech health checkout preserved', cs.count('onclick="add(\'zdravi\')"') == originals[Path('index.html')].count('onclick="add(\'zdravi\')"')),
+          ]
+          failed = [label for label, ok in checks if not ok]
+          if failed:
+              raise SystemExit('Final homepage validation failed: ' + ', '.join(failed))
+          print('Final homepage validation OK: finance + health links patched; Czech checkout handlers preserved')
           PY
           changed="$(git diff --name-only)"
           expected=$'en/index.html\nindex.html'
