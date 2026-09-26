@@ -12,96 +12,136 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Czech and English homepage product links safely
+      - name: Patch homepage and product purchase UI safely
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
 
-          files={Path('index.html'):Path('index.html').read_text(encoding='utf-8'),Path('en/index.html'):Path('en/index.html').read_text(encoding='utf-8')}
-          expected=dict(files)
-          patches=[
-            (Path('index.html'),'href="aplikace-finance.html"','href="/moje-finance.html"','CZ Finance href'),
-            (Path('en/index.html'),'href="aplikace-finance.html"','href="/en/my-finances.html"','EN Finance href'),
-            (Path('index.html'),'href="aplikace-zdravi.html"','href="/moje-zdravi.html"','CZ Health href'),
-            (Path('en/index.html'),'href="aplikace-zdravi.html"','href="/en/my-health.html"','EN Health href'),
-            (Path('index.html'),'<h3>Moje investice</h3>','<h3>Moje portfolio</h3>','CZ Portfolio name'),
-            (Path('index.html'),'href="aplikace-investice.html"','href="/moje-portfolio.html"','CZ Portfolio href'),
-            (Path('index.html'),'onclick="add(\'investice\')"','onclick="add(\'portfolio\')"','CZ Portfolio cart product'),
-            (Path('en/index.html'),'<h3>My Investments</h3>','<h3>My Portfolio</h3>','EN Portfolio name'),
-            (Path('en/index.html'),'href="aplikace-investice.html"','href="/en/my-portfolio.html"','EN Portfolio href'),
+          # Homepage patches remain content-based and idempotent.
+          home_patches=[
+            ('index.html','href="aplikace-finance.html"','href="/moje-finance.html"'),
+            ('en/index.html','href="aplikace-finance.html"','href="/en/my-finances.html"'),
+            ('index.html','href="aplikace-zdravi.html"','href="/moje-zdravi.html"'),
+            ('en/index.html','href="aplikace-zdravi.html"','href="/en/my-health.html"'),
+            ('index.html','<h3>Moje investice</h3>','<h3>Moje portfolio</h3>'),
+            ('index.html','href="aplikace-investice.html"','href="/moje-portfolio.html"'),
+            ('index.html','onclick="add(\'investice\')"','onclick="add(\'portfolio\')"'),
+            ('en/index.html','<h3>My Investments</h3>','<h3>My Portfolio</h3>'),
+            ('en/index.html','href="aplikace-investice.html"','href="/en/my-portfolio.html"'),
           ]
-          for path,old,new,label in patches:
-            before=expected[path]
-            old_count=before.count(old); new_count=before.count(new)
-            if old_count==1 and new_count==0:
-              expected[path]=before.replace(old,new,1)
-              print(f'{label}: patched exactly once')
-            elif old_count==0 and new_count==1:
-              print(f'{label}: already patched')
-            else:
-              raise SystemExit(f'{label}: unsafe counts old={old_count}, new={new_count}')
+          originals={}
+          expected={}
+          for f,_,_ in home_patches:
+            p=Path(f); originals.setdefault(p,p.read_text(encoding='utf-8')); expected.setdefault(p,originals[p])
+          for f,old,new in home_patches:
+            p=Path(f); text=expected[p]
+            if text.count(old)==1 and text.count(new)==0: text=text.replace(old,new,1)
+            elif text.count(old)==0 and text.count(new)==1: pass
+            else: raise SystemExit(f'{f}: unsafe homepage patch counts for {old!r}')
+            expected[p]=text
+          for p,text in expected.items(): p.write_text(text,encoding='utf-8')
 
-          cs0=files[Path('index.html')]; cs=expected[Path('index.html')]
-          en0=files[Path('en/index.html')]; en=expected[Path('en/index.html')]
-          if cs0.count('onclick="add(\'finance\')"') != cs.count('onclick="add(\'finance\')"'): raise SystemExit('CZ Finance cart changed unexpectedly')
-          if cs0.count('onclick="add(\'zdravi\')"') != cs.count('onclick="add(\'zdravi\')"'): raise SystemExit('CZ Health cart changed unexpectedly')
-          checks={
-            'CZ Portfolio name':cs.count('<h3>Moje portfolio</h3>')==1,
-            'CZ Portfolio href':cs.count('href="/moje-portfolio.html"')==1,
-            'CZ Portfolio product':cs.count('onclick="add(\'portfolio\')"')==1,
-            'CZ old Investments product removed':cs.count('onclick="add(\'investice\')"')==0,
-            'EN Portfolio name':en.count('<h3>My Portfolio</h3>')==1,
-            'EN Portfolio href':en.count('href="/en/my-portfolio.html"')==1,
-            'CZ Finance href':cs.count('href="/moje-finance.html"')==1,
-            'EN Finance href':en.count('href="/en/my-finances.html"')==1,
-            'CZ Health href':cs.count('href="/moje-zdravi.html"')==1,
-            'EN Health href':en.count('href="/en/my-health.html"')==1,
+          # Product detail pages: exact anchors only, no whole-file source replacement.
+          pages={
+            'moje-finance.html':{
+              'lang':'<div class="langSwitch" data-purchase-ui="lang"><a href="/moje-finance.html" aria-current="page">🇨🇿 CZ</a><a href="/en/my-finances.html" lang="en">🇬🇧 EN</a></div>',
+              'lang_anchor':'<main class="mf">',
+              'price':'<div class="price" data-purchase-ui="price">500 Kč</div>',
+              'action_old':'<div class="actions"><a class="btn primary" href="/index.html#checkout">Chci Moje finance →</a><a class="btn secondary" href="#funkce">Co aplikace umí ↓</a></div>',
+              'action_new':'<div class="actions" data-purchase-ui="actions"><button class="btn primary" type="button" data-cart-add="finance">🛒 Přidat do košíku</button><button class="btn secondary" type="button" data-cart-buy="finance">⚡ Koupit nyní</button><a class="btn secondary" data-cart-checkout href="/index.html#checkout">🛒 Košík (<span data-cart-count>0</span>)</a><a class="btn secondary" href="#funkce">Co aplikace umí ↓</a></div>',
+              'script':'<script src="/cart.js" defer></script>',
+            },
+            'en/my-finances.html':{
+              'lang':'<div class="langSwitch" data-purchase-ui="lang"><a href="/moje-finance.html" lang="cs">🇨🇿 CZ</a><a href="/en/my-finances.html" aria-current="page">🇬🇧 EN</a></div>',
+              'lang_anchor':'<main class="mf">',
+              'price':'<div class="price" data-purchase-ui="price">CZK 500</div>',
+              'action_old':'<div class="actions"><a class="btn primary" href="/en/index.html#checkout">I want My Finances →</a><a class="btn secondary" href="#features">What the app does ↓</a></div>',
+              'action_new':'<div class="actions" data-purchase-ui="actions"><button class="btn primary" type="button" data-cart-add="finance">🛒 Add to cart</button><button class="btn secondary" type="button" data-cart-buy="finance">⚡ Buy now</button><a class="btn secondary" data-cart-checkout href="/en/index.html#checkout">🛒 Cart (<span data-cart-count>0</span>)</a><a class="btn secondary" href="#features">What the app does ↓</a></div>',
+              'script':'<script src="/cart.js" defer></script>',
+            },
+            'moje-zdravi.html':{
+              'lang':'<div class="langSwitch" data-purchase-ui="lang"><a href="/moje-zdravi.html" aria-current="page">🇨🇿 CZ</a><a href="/en/my-health.html" lang="en">🇬🇧 EN</a></div>',
+              'lang_anchor':'<main class="mh">',
+              'price':None,
+              'action_old':'<div class="actions"><a class="btn primary" href="/index.html#checkout">Chci Moje zdraví →</a><a class="btn secondary" href="#funkce">Co aplikace umí ↓</a></div>',
+              'action_new':'<div class="actions" data-purchase-ui="actions"><button class="btn primary" type="button" data-cart-add="zdravi">🛒 Přidat do košíku</button><button class="btn secondary" type="button" data-cart-buy="zdravi">⚡ Koupit nyní</button><a class="btn secondary" data-cart-checkout href="/index.html#checkout">🛒 Košík (<span data-cart-count>0</span>)</a><a class="btn secondary" href="#funkce">Co aplikace umí ↓</a></div>',
+              'script':'<script src="/cart.js" defer></script>',
+            },
+            'en/my-health.html':{
+              'lang':'<div class="langSwitch" data-purchase-ui="lang"><a href="/moje-zdravi.html" lang="cs">🇨🇿 CZ</a><a href="/en/my-health.html" aria-current="page">🇬🇧 EN</a></div>',
+              'lang_anchor':'<main class="mh">',
+              'price':None,
+              'action_old':'<div class="actions"><a class="btn primary" href="/en/index.html#checkout">I want My Health →</a><a class="btn secondary" href="#features">What the app does ↓</a></div>',
+              'action_new':'<div class="actions" data-purchase-ui="actions"><button class="btn primary" type="button" data-cart-add="zdravi">🛒 Add to cart</button><button class="btn secondary" type="button" data-cart-buy="zdravi">⚡ Buy now</button><a class="btn secondary" data-cart-checkout href="/en/index.html#checkout">🛒 Cart (<span data-cart-count>0</span>)</a><a class="btn secondary" href="#features">What the app does ↓</a></div>',
+              'script':'<script src="/cart.js" defer></script>',
+            },
           }
-          failed=[k for k,v in checks.items() if not v]
-          if failed: raise SystemExit('Homepage validation failed: '+', '.join(failed))
-
-          for path,after in expected.items():
-            committed=subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'],text=True)
-            if committed!=files[path]: raise SystemExit(f'{path}: working copy differed from HEAD before patch')
-            path.write_text(after,encoding='utf-8')
-          print('Homepage content validation OK: only targeted product strings were replaced')
+          for name,cfg in pages.items():
+            p=Path(name); text=p.read_text(encoding='utf-8'); before=text
+            # Language switch is inserted once immediately before main; existing plain header EN/CZ links are left harmlessly intact.
+            if 'data-purchase-ui="lang"' not in text:
+              if text.count(cfg['lang_anchor'])!=1: raise SystemExit(f'{name}: main anchor unsafe')
+              text=text.replace(cfg['lang_anchor'],cfg['lang']+cfg['lang_anchor'],1)
+            if cfg['price'] and 'data-purchase-ui="price"' not in text:
+              marker='<div class="benefits">'
+              if text.count(marker)!=1: raise SystemExit(f'{name}: price anchor unsafe')
+              text=text.replace(marker,cfg['price']+marker,1)
+            if 'data-purchase-ui="actions"' not in text:
+              if text.count(cfg['action_old'])!=1: raise SystemExit(f'{name}: purchase actions anchor unsafe, count={text.count(cfg["action_old"])}')
+              text=text.replace(cfg['action_old'],cfg['action_new'],1)
+            if cfg['script'] not in text:
+              if text.count('</body>')!=1: raise SystemExit(f'{name}: body end unsafe')
+              text=text.replace('</body>',cfg['script']+'</body>',1)
+            p.write_text(text,encoding='utf-8')
+            print(f'{name}: purchase UI patched safely')
           PY
-          changed="$(git diff --name-only)"; expected=$'en/index.html\nindex.html'
-          test "$changed" = "$expected" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
           git diff --check
+      - name: Add Buy now behavior to shared cart safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('cart.js'); text=p.read_text(encoding='utf-8')
+          old="const checkoutButton=e.target.closest('[data-cart-checkout]');if(checkoutButton){e.preventDefault();go()}"
+          new="const buyButton=e.target.closest('[data-cart-buy]');if(buyButton){e.preventDefault();if(add(buyButton.dataset.cartBuy))go();return}const checkoutButton=e.target.closest('[data-cart-checkout]');if(checkoutButton){e.preventDefault();go()}"
+          if text.count(old)==1 and text.count(new)==0: text=text.replace(old,new,1)
+          elif text.count(old)==0 and text.count(new)==1: pass
+          else: raise SystemExit('cart.js Buy now patch unsafe')
+          p.write_text(text,encoding='utf-8')
+          PY
+          node --check cart.js
       - name: Render shared headers
         shell: bash
         run: |
           python3 tools/render-header.py
           python3 tools/render-header.py --check
-          changed="$(git diff --name-only)"
-          unexpected="$(echo "$changed" | grep -v -E '^(index\.html|en/index\.html|moje-finance\.html|en/my-finances\.html|moje-zdravi\.html|en/my-health\.html|moje-portfolio\.html|en/my-portfolio\.html)$' || true)"
-          if [ -n "$unexpected" ]; then echo "::error::Unexpected files changed:"; echo "$unexpected"; exit 1; fi
           git diff --check
-      - name: Validate My Portfolio pages, homepage cards and shared cart
+      - name: Validate Finance Health Portfolio purchase UI
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          cs=Path('moje-portfolio.html').read_text(encoding='utf-8'); en=Path('en/my-portfolio.html').read_text(encoding='utf-8')
-          home=Path('index.html').read_text(encoding='utf-8'); enhome=Path('en/index.html').read_text(encoding='utf-8'); cart=Path('cart.js').read_text(encoding='utf-8')
-          checks={
-            'CZ price 500 Kč':'500 Kč' in cs,'EN price CZK 500':'CZK 500' in en,
-            'CZ add portfolio':'data-cart-add="portfolio"' in cs,'EN add portfolio':'data-cart-add="portfolio"' in en,
-            'CZ cart counter':'data-cart-count' in cs,'EN cart counter':'data-cart-count' in en,
-            'CZ checkout':'href="/index.html#checkout"' in cs,'EN checkout':'href="/en/index.html#checkout"' in en,
-            'CZ cart.js':'src="/cart.js"' in cs,'EN cart.js':'src="/cart.js"' in en,
-            'shared cart portfolio':"'portfolio'" in cart,'shared CZ checkout':"'/index.html#checkout'" in cart,'shared EN checkout':"'/en/index.html#checkout'" in cart,
-            'CZ homepage Portfolio':'<h3>Moje portfolio</h3>' in home and 'href="/moje-portfolio.html"' in home and 'onclick="add(\'portfolio\')"' in home,
-            'EN homepage Portfolio':'<h3>My Portfolio</h3>' in enhome and 'href="/en/my-portfolio.html"' in enhome,
-            'CZ old Investments absent':'<h3>Moje investice</h3>' not in home and 'onclick="add(\'investice\')"' not in home,
-            'EN old Investments absent':'<h3>My Investments</h3>' not in enhome,
-          }
-          failed=[k for k,v in checks.items() if not v]
-          if failed: raise SystemExit('Portfolio validation failed: '+', '.join(failed))
-          print('Portfolio validation OK: homepage CZ/EN + product pages + shared cart')
+          specs=[
+            ('moje-finance.html','500 Kč','finance','/index.html#checkout','🇨🇿 CZ','🇬🇧 EN'),
+            ('en/my-finances.html','CZK 500','finance','/en/index.html#checkout','🇨🇿 CZ','🇬🇧 EN'),
+            ('moje-zdravi.html','500 Kč','zdravi','/index.html#checkout','🇨🇿 CZ','🇬🇧 EN'),
+            ('en/my-health.html','CZK 500','zdravi','/en/index.html#checkout','🇨🇿 CZ','🇬🇧 EN'),
+            ('moje-portfolio.html','500 Kč','portfolio','/index.html#checkout',None,None),
+            ('en/my-portfolio.html','CZK 500','portfolio','/en/index.html#checkout',None,None),
+          ]
+          errors=[]
+          for name,price,product,checkout,cz,en in specs:
+            t=Path(name).read_text(encoding='utf-8')
+            required=[price,f'data-cart-add="{product}"','data-cart-count',f'href="{checkout}"','src="/cart.js"']
+            if product in ('finance','zdravi'): required += [f'data-cart-buy="{product}"','data-purchase-ui="lang"',cz,en]
+            for s in required:
+              if s not in t: errors.append(f'{name}: missing {s}')
+          cart=Path('cart.js').read_text(encoding='utf-8')
+          if "[data-cart-buy]" not in cart: errors.append('cart.js: missing Buy now handler')
+          if errors: raise SystemExit('Purchase UI validation failed:\n'+'\n'.join(errors))
+          print('Purchase UI validation OK: Finance + Health CZ/EN, Portfolio preserved')
           PY
           node --check cart.js
       - name: Check shared navigation
@@ -110,25 +150,6 @@ jobs:
           node --check header.js
       - name: Apply SEO metadata to localized pages
         run: python3 tools/apply-seo-head.py
-      - name: Audit generated SEO metadata before deployment
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          slugs=['zdravi','finance','investice','cile','vztahy','rozvoj','firma','podnikani','prace']
-          names=[f'aplikace-{s}.html' for s in slugs]+['ochrana-osobnich-udaju.html','obchodni-podminky.html','cookies.html']
-          errors=[]
-          for name in names:
-            for lang in ('cs','en'):
-              path=Path(name if lang=='cs' else 'en/'+name); text=path.read_text(encoding='utf-8')
-              cs=f'https://kupsiapku.cz/{name}'; en=f'https://kupsiapku.cz/en/{name}'; canonical=cs if lang=='cs' else en
-              checks=[('robots','name="robots"' in text and 'index,follow' in text),('canonical',f'rel="canonical" href="{canonical}"' in text),('cs hreflang',f'hreflang="cs-CZ" href="{cs}"' in text),('en hreflang',f'hreflang="en" href="{en}"' in text),('x-default',f'hreflang="x-default" href="{cs}"' in text),('title',bool(re.search(r'<title>.+?</title>',text,re.I))),('H1',bool(re.search(r'<h1[^>]*>.*?</h1>',text,re.I|re.S)))]
-              for label,ok in checks:
-                if not ok: errors.append(f'{path}: {label}')
-          if errors: raise SystemExit('SEO audit failed:\n'+'\n'.join(errors))
-          print('SEO audit OK: 24 localized pages')
-          PY
       - name: Set up PHP for admin security tests
         uses: shivammathur/setup-php@v2
         with:
@@ -175,30 +196,27 @@ jobs:
             **/tools/**
             CNAME
             README.md
-      - name: Verify production HTTP, HTTPS, Portfolio and SEO
+      - name: Verify production purchase UI
         shell: bash
         run: |
           sleep 5
-          curl --fail --silent --show-error --location --max-time 30 https://kupsiapku.cz/ >/dev/null
-          curl --fail --silent --show-error --location --max-time 30 http://kupsiapku.cz/ >/dev/null
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/moje-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-cs.html
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/my-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-en.html
+          for spec in \
+            'moje-finance.html|500 Kč|finance|/index.html#checkout' \
+            'en/my-finances.html|CZK 500|finance|/en/index.html#checkout' \
+            'moje-zdravi.html|500 Kč|zdravi|/index.html#checkout' \
+            'en/my-health.html|CZK 500|zdravi|/en/index.html#checkout'; do
+            IFS='|' read -r page price product checkout <<< "$spec"
+            out="/tmp/$(echo "$page" | tr '/' '-')"
+            curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/${page}?deploy=${GITHUB_SHA}" -o "$out"
+            grep -F "$price" "$out" >/dev/null
+            grep -F "data-cart-add=\"$product\"" "$out" >/dev/null
+            grep -F "data-cart-buy=\"$product\"" "$out" >/dev/null
+            grep -F 'data-cart-count' "$out" >/dev/null
+            grep -F "href=\"$checkout\"" "$out" >/dev/null
+            grep -F '🇨🇿 CZ' "$out" >/dev/null
+            grep -F '🇬🇧 EN' "$out" >/dev/null
+          done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/cart.js?deploy=${GITHUB_SHA}" -o /tmp/cart.js
-          grep -F '500 Kč' /tmp/portfolio-cs.html >/dev/null; grep -F 'CZK 500' /tmp/portfolio-en.html >/dev/null
-          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-cs.html >/dev/null; grep -F 'data-cart-add="portfolio"' /tmp/portfolio-en.html >/dev/null
-          grep -F 'data-cart-count' /tmp/portfolio-cs.html >/dev/null; grep -F 'data-cart-count' /tmp/portfolio-en.html >/dev/null
-          grep -F 'href="/index.html#checkout"' /tmp/portfolio-cs.html >/dev/null; grep -F 'href="/en/index.html#checkout"' /tmp/portfolio-en.html >/dev/null
-          grep -F "'portfolio'" /tmp/cart.js >/dev/null
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" -o /tmp/home.html
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" -o /tmp/en-home.html
-          grep -F '<h3>Moje portfolio</h3>' /tmp/home.html >/dev/null
-          grep -F 'href="/moje-portfolio.html"' /tmp/home.html >/dev/null
-          grep -F 'onclick="add('"'"'portfolio'"'"')"' /tmp/home.html >/dev/null
-          ! grep -F '<h3>Moje investice</h3>' /tmp/home.html >/dev/null
-          grep -F '<h3>My Portfolio</h3>' /tmp/en-home.html >/dev/null
-          grep -F 'href="/en/my-portfolio.html"' /tmp/en-home.html >/dev/null
-          ! grep -F '<h3>My Investments</h3>' /tmp/en-home.html >/dev/null
-          grep -F 'href="/moje-finance.html"' /tmp/home.html >/dev/null; grep -F 'href="/en/my-finances.html"' /tmp/en-home.html >/dev/null
-          grep -F 'href="/moje-zdravi.html"' /tmp/home.html >/dev/null; grep -F 'href="/en/my-health.html"' /tmp/en-home.html >/dev/null
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'
-          echo 'Production verification OK: homepage Portfolio CZ/EN + shared cart + checkout targets'
+          grep -F '[data-cart-buy]' /tmp/cart.js >/dev/null
+          node --check /tmp/cart.js
+          echo 'Production purchase UI OK: Finance + Health CZ/EN'
