@@ -1,0 +1,2 @@
+KUPSIAPKU DEPLOY TEST 2026-09-26
+If this text is visible at /deploy-check-20260926.txt on kupsiapku.cz, files from GitHub main were copied through Webkitty into the production document root.
