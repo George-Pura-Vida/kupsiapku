@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const KEY='kupsiapku_cart';
-const allowed=new Set(['zdravi','finance','investice','cile','vztahy','rozvoj','firma','podnikani','prace']);
+const allowed=new Set(['zdravi','finance','portfolio','investice','cile','vztahy','rozvoj','firma','podnikani','prace']);
 const isEn=document.documentElement.lang.toLowerCase().startsWith('en');
 const checkout=isEn?'/en/index.html#checkout':'/index.html#checkout';
 function read(){try{const v=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(v)?[...new Set(v.filter(x=>allowed.has(x)))]:[]}catch{return[]}}
