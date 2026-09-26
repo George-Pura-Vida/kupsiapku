@@ -6,6 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LEGAL = {'bezpecnost.html', 'cookies.html', 'obchodni-podminky.html', 'ochrana-osobnich-udaju.html', '404.html'}
+HEADER_EXEMPT = {'test-moje-finance.html'}
 
 def render(path):
     en = path.parent.name == 'en'
@@ -64,6 +65,8 @@ def render(path):
 def main():
     changed=[]
     for path in sorted(ROOT.rglob('*.html')):
+        if path.name in HEADER_EXEMPT:
+            continue
         source=path.read_text(encoding='utf-8')
         result,count=re.subn(r'<header\b.*?</header>', lambda _:render(path),source,count=1,flags=re.S)
         assert count==1,path
