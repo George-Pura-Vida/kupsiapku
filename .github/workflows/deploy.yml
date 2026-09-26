@@ -17,24 +17,38 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import subprocess
           path = Path('index.html')
-          text = path.read_text(encoding='utf-8')
+          before = path.read_text(encoding='utf-8')
           old = 'href="aplikace-finance.html"'
           new = 'href="/moje-finance.html"'
-          count = text.count(old)
-          if count != 1:
-              raise SystemExit(f'Expected exactly 1 Czech My Finances link, found {count}')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          checkout = 'onclick="add(\'finance\')"'
+          if before.count(old) != 1:
+              raise SystemExit(f'Expected exactly 1 old Czech My Finances href, found {before.count(old)}')
+          if before.count(new) != 0:
+              raise SystemExit(f'Expected 0 new Czech My Finances hrefs before patch, found {before.count(new)}')
+          checkout_before = before.count(checkout)
+          if checkout_before < 1:
+              raise SystemExit('Finance checkout button missing before patch')
+          after = before.replace(old, new, 1)
+          if after.count(old) != 0 or after.count(new) != 1:
+              raise SystemExit('Homepage href replacement validation failed')
+          if after.count(checkout) != checkout_before:
+              raise SystemExit('Finance checkout changed during patch')
+          expected = before.replace(old, new, 1)
+          if after != expected:
+              raise SystemExit('Unexpected homepage content change')
+          path.write_text(after, encoding='utf-8')
+          committed = subprocess.check_output(['git','show','HEAD:index.html'], text=True)
+          expected_from_head = committed.replace(old, new, 1)
+          if after != expected_from_head:
+              raise SystemExit('Patched homepage differs from HEAD by more than the intended href replacement')
+          print('Safe homepage patch OK: exactly one href replaced; finance checkout preserved')
           PY
           changed="$(git diff --name-only)"
           test "$changed" = "index.html" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
           git diff --check
-          diff="$(git diff -- index.html)"
-          echo "$diff"
-          echo "$diff" | grep -F -- '-<a class="detailLink" href="aplikace-finance.html">Prohlédnout aplikaci</a>' >/dev/null || { echo "::error::Expected old finance link removal not found"; exit 1; }
-          echo "$diff" | grep -F -- '+<a class="detailLink" href="/moje-finance.html">Prohlédnout aplikaci</a>' >/dev/null || { echo "::error::Expected new finance link addition not found"; exit 1; }
-          test "$(git diff --numstat -- index.html | awk '{print $1":"$2}')" = "1:1" || { echo "::error::Homepage diff is not exactly one line added and one line removed"; exit 1; }
-          grep -F 'onclick="add('\''finance'\'')"' index.html >/dev/null || { echo "::error::Finance checkout button changed or missing"; exit 1; }
+          git diff --stat -- index.html
       - name: Render My Finances shared headers
         shell: bash
         run: |
