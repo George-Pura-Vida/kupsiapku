@@ -19,13 +19,18 @@ ErrorDocument 404 /404.html
 SetEnv DONATION_ACCOUNT CZ8220100000000223366333+FIOBCZPPXXX
 </IfModule>
 
-# HTML should revalidate so new deploys are visible immediately.
-# Versioned static assets can be cached aggressively.
+# HTML and JavaScript must revalidate so cart/header fixes are visible immediately.
+# Images and CSS may remain long-lived; CSS uses versioned URLs.
 <IfModule mod_headers.c>
 <FilesMatch "\.html?$">
 Header set Cache-Control "no-cache, must-revalidate"
 </FilesMatch>
-<FilesMatch "\.(css|js|jpg|jpeg|png|webp|avif|svg|ico)$">
+<FilesMatch "\.js$">
+Header set Cache-Control "no-cache, no-store, must-revalidate"
+Header set Pragma "no-cache"
+Header set Expires "0"
+</FilesMatch>
+<FilesMatch "\.(css|jpg|jpeg|png|webp|avif|svg|ico)$">
 Header set Cache-Control "public, max-age=31536000, immutable"
 </FilesMatch>
 </IfModule>
@@ -33,8 +38,8 @@ Header set Cache-Control "public, max-age=31536000, immutable"
 <IfModule mod_expires.c>
 ExpiresActive On
 ExpiresByType text/css "access plus 1 year"
-ExpiresByType application/javascript "access plus 1 year"
-ExpiresByType text/javascript "access plus 1 year"
+ExpiresByType application/javascript "access plus 0 seconds"
+ExpiresByType text/javascript "access plus 0 seconds"
 ExpiresByType image/jpeg "access plus 1 year"
 ExpiresByType image/png "access plus 1 year"
 ExpiresByType image/webp "access plus 1 year"
