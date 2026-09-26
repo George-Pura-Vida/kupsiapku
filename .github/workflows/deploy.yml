@@ -12,6 +12,39 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Apply SEO metadata to localized pages
+        run: python3 tools/apply-seo-head.py
+      - name: Audit generated SEO metadata before deployment
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          slugs=['zdravi','finance','investice','cile','vztahy','rozvoj','firma','podnikani','prace']
+          names=[f'aplikace-{s}.html' for s in slugs]+['ochrana-osobnich-udaju.html','obchodni-podminky.html','cookies.html']
+          errors=[]
+          for name in names:
+              for lang in ('cs','en'):
+                  path=Path(name if lang=='cs' else 'en/'+name)
+                  text=path.read_text(encoding='utf-8')
+                  cs=f'https://kupsiapku.cz/{name}'
+                  en=f'https://kupsiapku.cz/en/{name}'
+                  canonical=cs if lang=='cs' else en
+                  checks=[
+                    ('robots', 'name="robots"' in text and 'index,follow' in text),
+                    ('canonical', f'rel="canonical" href="{canonical}"' in text),
+                    ('cs hreflang', f'hreflang="cs-CZ" href="{cs}"' in text),
+                    ('en hreflang', f'hreflang="en" href="{en}"' in text),
+                    ('x-default', f'hreflang="x-default" href="{cs}"' in text),
+                    ('title', bool(re.search(r'<title>.+?</title>', text, re.I))),
+                    ('H1', bool(re.search(r'<h1[^>]*>.*?</h1>', text, re.I|re.S))),
+                  ]
+                  for label,ok in checks:
+                      if not ok: errors.append(f'{path}: {label}')
+          if errors:
+              raise SystemExit('SEO audit failed:\n'+'\n'.join(errors))
+          print('SEO audit OK: 24 localized pages')
+          PY
       - name: Set up PHP for admin security tests
         uses: shivammathur/setup-php@v2
         with:
@@ -58,9 +91,10 @@ jobs:
             **/api/data/admin-database.json
             **/tests/**
             **/docs/**
+            **/tools/**
             CNAME
             README.md
-      - name: Verify production HTTP and HTTPS
+      - name: Verify production HTTP, HTTPS and SEO
         shell: bash
         run: |
           sleep 5
@@ -72,12 +106,7 @@ jobs:
             verified=false
             for attempt in {1..6}; do
               status=$(curl --silent --show-error --max-time 30 --output /tmp/error-page.html --write-out '%{http_code}' "https://kupsiapku.cz${path}?deploy=${GITHUB_SHA}") || status=000
-              if [[ "$status" == "$expected" ]] &&
-                 grep -q 'id="error-title"' /tmp/error-page.html &&
-                 grep -q 'name="robots" content="noindex,follow"' /tmp/error-page.html; then
-                verified=true
-                break
-              fi
+              if [[ "$status" == "$expected" ]] && grep -q 'id="error-title"' /tmp/error-page.html && grep -q 'name="robots" content="noindex,follow"' /tmp/error-page.html; then verified=true; break; fi
               sleep 10
             done
             [[ "$verified" == true ]] || { echo "Failed: $path expected $expected, got $status or wrong page content"; exit 1; }
@@ -85,6 +114,21 @@ jobs:
           done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
           grep -q 'name="keywords"' /tmp/home-page.html
+          for name in aplikace-zdravi.html aplikace-finance.html aplikace-investice.html aplikace-cile.html aplikace-vztahy.html aplikace-rozvoj.html aplikace-firma.html aplikace-podnikani.html aplikace-prace.html ochrana-osobnich-udaju.html obchodni-podminky.html cookies.html; do
+            for prefix in '' 'en/'; do
+              url="https://kupsiapku.cz/${prefix}${name}?deploy=${GITHUB_SHA}"
+              out="/tmp/seo-${prefix//\//-}${name}"
+              status=$(curl --silent --show-error --location --max-time 30 --output "$out" --write-out '%{http_code}' "$url")
+              test "$status" = 200 || { echo "SEO HTTP failure $url: $status"; exit 1; }
+              grep -q 'name="robots" content="index,follow' "$out"
+              grep -q 'rel="canonical"' "$out"
+              grep -q 'hreflang="cs-CZ"' "$out"
+              grep -q 'hreflang="en"' "$out"
+              grep -q 'hreflang="x-default"' "$out"
+              grep -q '<title>' "$out"
+              grep -q '<h1' "$out"
+            done
+          done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/doporucit.html?deploy=${GITHUB_SHA}" --output /tmp/affiliate-page.html
           grep -q 'affiliate.js?v=' /tmp/affiliate-page.html
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/affiliate.js?v=${GITHUB_SHA}" --output /tmp/affiliate.js
@@ -92,8 +136,8 @@ jobs:
           if grep -q 'qrUrl(profile.shareUrl)' /tmp/affiliate.js; then echo "Stale QR function found"; exit 1; fi
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/prispet.html?deploy=${GITHUB_SHA}" | grep -q 'id="donationForm"'
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'
-          echo "Production verification OK"
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/admin.html?deploy=${GITHUB_SHA}" | grep -q 'id="forgotForm"'
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
           status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
           test "$status" = 401
+          echo "Production verification OK: 24 SEO pages + existing checks"
