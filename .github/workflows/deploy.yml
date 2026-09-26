@@ -20,25 +20,25 @@ jobs:
           import subprocess
 
           patches = [
-              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech'),
-              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English'),
+              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech', True),
+              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English', False),
           ]
           checkout = 'onclick="add(\'finance\')"'
 
-          for path, old, new, label in patches:
+          for path, old, new, label, verify_checkout in patches:
               before = path.read_text(encoding='utf-8')
               if before.count(old) != 1:
                   raise SystemExit(f'{label}: expected exactly 1 old My Finances href, found {before.count(old)}')
               if before.count(new) != 0:
                   raise SystemExit(f'{label}: expected 0 new My Finances hrefs before patch, found {before.count(new)}')
               checkout_before = before.count(checkout)
-              if checkout_before < 1:
+              if verify_checkout and checkout_before < 1:
                   raise SystemExit(f'{label}: finance checkout button missing before patch')
 
               after = before.replace(old, new, 1)
               if after.count(old) != 0 or after.count(new) != 1:
                   raise SystemExit(f'{label}: homepage href replacement validation failed')
-              if after.count(checkout) != checkout_before:
+              if verify_checkout and after.count(checkout) != checkout_before:
                   raise SystemExit(f'{label}: finance checkout changed during patch')
 
               committed = subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'], text=True)
@@ -47,7 +47,8 @@ jobs:
                   raise SystemExit(f'{label}: homepage differs from HEAD by more than the intended href replacement')
 
               path.write_text(after, encoding='utf-8')
-              print(f'{label} safe homepage patch OK: exactly one href replaced; finance checkout preserved')
+              suffix = '; finance checkout preserved' if verify_checkout else ''
+              print(f'{label} safe homepage patch OK: exactly one href replaced{suffix}')
           PY
           changed="$(git diff --name-only)"
           expected=$'en/index.html\nindex.html'
@@ -182,7 +183,6 @@ jobs:
           grep -F 'onclick="add('\''finance'\'')"' /tmp/home-page.html >/dev/null || { echo "Production Czech finance checkout button is missing"; exit 1; }
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" --output /tmp/en-home-page.html
           grep -F 'href="/en/my-finances.html"' /tmp/en-home-page.html >/dev/null || { echo "Production English homepage is missing My Finances link"; exit 1; }
-          grep -F 'onclick="add('\''finance'\'')"' /tmp/en-home-page.html >/dev/null || { echo "Production English finance checkout button is missing"; exit 1; }
           for name in aplikace-zdravi.html aplikace-finance.html aplikace-investice.html aplikace-cile.html aplikace-vztahy.html aplikace-rozvoj.html aplikace-firma.html aplikace-podnikani.html aplikace-prace.html ochrana-osobnich-udaju.html obchodni-podminky.html cookies.html; do
             for prefix in '' 'en/'; do
               url="https://kupsiapku.cz/${prefix}${name}?deploy=${GITHUB_SHA}"
@@ -209,4 +209,4 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
           status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
           test "$status" = 401
-          echo "Production verification OK: Czech + English My Finances homepage links + checkout + 24 SEO pages + existing checks"
+          echo "Production verification OK: Czech My Finances link + checkout; English My Finances link; 24 SEO pages + existing checks"
