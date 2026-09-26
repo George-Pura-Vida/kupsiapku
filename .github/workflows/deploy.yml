@@ -69,6 +69,15 @@ jobs:
                   errors.append(f'{name}: missing standardized FAQ')
           if errors:
               raise SystemExit('\n'.join(errors))
+          standard_pages = ['moje-zdravi.html','en/my-health.html','moje-finance.html','en/my-finances.html','moje-portfolio.html','en/my-portfolio.html']
+          for name in standard_pages:
+              t=Path(name).read_text(encoding='utf-8')
+              for required in ('productPage','productHero','productHero-media','purchaseRow','finalPurchase','data-cart-add','data-cart-checkout','id="faq"','/header.css','/header.js','/cart.js'):
+                  if required not in t:
+                      errors.append(f'{name}: shared product standard missing {required}')
+              hero=t[t.find('<section class="hero'):t.find('</section>',t.find('<section class="hero'))]
+              if hero.find('productHero-media') > hero.find('purchaseRow'):
+                  errors.append(f'{name}: purchase must follow preview')
           print('Shared frontend validation OK')
           PY
           git diff --check
