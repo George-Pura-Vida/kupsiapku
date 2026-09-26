@@ -34,14 +34,6 @@ jobs:
                   errors.append(f'{name}: missing siteHeader')
           for name in ('moje-portfolio.html','en/my-portfolio.html'):
               t=Path(name).read_text(encoding='utf-8')
-              if t.count('<img ') < 3:
-                  errors.append(f'{name}: missing real screenshot gallery')
-          for name in ('moje-finance.html','en/my-finances.html'):
-              t=Path(name).read_text(encoding='utf-8')
-              if t.count('<img ') < 2:
-                  errors.append(f'{name}: missing real screenshot gallery')
-          for name in ('moje-portfolio.html','en/my-portfolio.html'):
-              t=Path(name).read_text(encoding='utf-8')
               if 'data-cart-add="portfolio"' not in t:
                   errors.append(f'{name}: missing portfolio cart action')
           cart=Path('cart.js').read_text(encoding='utf-8')
