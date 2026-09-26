@@ -1,4 +1,4 @@
-/* One controller for the shared sticky header and product purchase UI. */
+/* One controller for the shared sticky header and product purchase UI. Production deploy refresh. */
 (()=>{
 'use strict';
 const header=document.querySelector('.siteHeader');
