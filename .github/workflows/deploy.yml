@@ -12,6 +12,29 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+      - name: Patch Czech My Finances homepage link safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          old = 'href="aplikace-finance.html"'
+          new = 'href="/moje-finance.html"'
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly 1 Czech My Finances link, found {count}')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          changed="$(git diff --name-only)"
+          test "$changed" = "index.html" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
+          git diff --check
+          diff="$(git diff -- index.html)"
+          echo "$diff"
+          echo "$diff" | grep -F -- '-<a class="detailLink" href="aplikace-finance.html">Prohlédnout aplikaci</a>' >/dev/null || { echo "::error::Expected old finance link removal not found"; exit 1; }
+          echo "$diff" | grep -F -- '+<a class="detailLink" href="/moje-finance.html">Prohlédnout aplikaci</a>' >/dev/null || { echo "::error::Expected new finance link addition not found"; exit 1; }
+          test "$(git diff --numstat -- index.html | awk '{print $1":"$2}')" = "1:1" || { echo "::error::Homepage diff is not exactly one line added and one line removed"; exit 1; }
+          grep -F 'onclick="add('\''finance'\'')"' index.html >/dev/null || { echo "::error::Finance checkout button changed or missing"; exit 1; }
       - name: Render My Finances shared headers
         shell: bash
         run: |
@@ -19,11 +42,11 @@ jobs:
           python3 tools/render-header.py --check
           changed="$(git diff --name-only)"
           if [ -n "$changed" ]; then
-            echo "Files changed by render-header.py:"
+            echo "Files changed after render-header.py:"
             echo "$changed"
-            unexpected="$(echo "$changed" | grep -v -E '^(moje-finance\.html|en/my-finances\.html)$' || true)"
+            unexpected="$(echo "$changed" | grep -v -E '^(index\.html|moje-finance\.html|en/my-finances\.html)$' || true)"
             if [ -n "$unexpected" ]; then
-              echo "::error::render-header.py changed unexpected files:"
+              echo "::error::Unexpected files changed:"
               echo "$unexpected"
               exit 1
             fi
@@ -136,6 +159,8 @@ jobs:
           done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
           grep -q 'name="keywords"' /tmp/home-page.html
+          grep -F 'href="/moje-finance.html"' /tmp/home-page.html >/dev/null || { echo "Production homepage is missing My Finances link"; exit 1; }
+          grep -F 'onclick="add('\''finance'\'')"' /tmp/home-page.html >/dev/null || { echo "Production finance checkout button is missing"; exit 1; }
           for name in aplikace-zdravi.html aplikace-finance.html aplikace-investice.html aplikace-cile.html aplikace-vztahy.html aplikace-rozvoj.html aplikace-firma.html aplikace-podnikani.html aplikace-prace.html ochrana-osobnich-udaju.html obchodni-podminky.html cookies.html; do
             for prefix in '' 'en/'; do
               url="https://kupsiapku.cz/${prefix}${name}?deploy=${GITHUB_SHA}"
@@ -162,4 +187,4 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
           status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
           test "$status" = 401
-          echo "Production verification OK: 24 SEO pages + existing checks"
+          echo "Production verification OK: My Finances homepage link + checkout + 24 SEO pages + existing checks"
