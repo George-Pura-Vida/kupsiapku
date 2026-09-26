@@ -7,6 +7,15 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 LEGAL = {'bezpecnost.html', 'cookies.html', 'obchodni-podminky.html', 'ochrana-osobnich-udaju.html', '404.html'}
 HEADER_EXEMPT = {'test-moje-finance.html'}
+LANGUAGE_PAIRS = {
+    'moje-finance.html': 'my-finances.html',
+    'my-finances.html': 'moje-finance.html',
+}
+
+def language_counterpart(path, en):
+    """Return the translated counterpart path, including pages whose filenames differ."""
+    other_name = LANGUAGE_PAIRS.get(path.name, path.name)
+    return ROOT / other_name if en else ROOT / 'en' / other_name
 
 def render(path):
     en = path.parent.name == 'en'
@@ -40,14 +49,17 @@ def render(path):
         items.append('<a class="siteHeader-cart" href="#checkout"><span aria-hidden="true">🛒</span><span class="siteHeader-sr">Košík, počet aplikací:</span> <span id="count" aria-live="polite">0</span></a>')
     if name == 'admin.html':
         items += ['<strong>Administrace</strong>', '<button id="logout" class="btn alt hide" type="button">Odhlásit</button>']
-    other = ROOT/name if en else ROOT/'en'/name
+    other = language_counterpart(path, en)
     language=''
     if other.exists():
         for lang, flag, label in [('cs','CZ','CZ'),('en','GB','EN')]:
             content=f'<span class="siteHeader-flag siteHeader-flag{flag}" aria-hidden="true"></span>{label}'
             if (lang=='en') == en: language+=f'<span aria-current="true">{content}</span>'
             else:
-                href='/'+name if en else '/en/'+name
+                if name in LANGUAGE_PAIRS:
+                    href = ('/' + LANGUAGE_PAIRS[name]) if en else ('/en/' + LANGUAGE_PAIRS[name])
+                else:
+                    href='/'+name if en else '/en/'+name
                 target=f' data-lang-target="{lang}"' if name=='index.html' else ''
                 language+=f'<a href="{href}" lang="{lang}" hreflang="{lang}" aria-label="{ "Česká verze" if en else "English version" }"{target}>{content}</a>'
         language=f'<div class="siteHeader-languages" aria-label="{text("Jazyk","Language")}">{language}</div>'
