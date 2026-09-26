@@ -1,0 +1,29 @@
+name: Sync My Finances headers
+
+on:
+  push:
+    paths:
+      - '.github/workflows/sync-my-finances-headers.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render shared headers
+        run: python3 tools/render-header.py
+      - name: Commit synchronized production headers
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add moje-finance.html en/my-finances.html
+          if git diff --cached --quiet; then
+            echo "Headers already synchronized."
+            exit 0
+          fi
+          git commit -m "Sync My Finances headers via render-header.py"
+          git push
