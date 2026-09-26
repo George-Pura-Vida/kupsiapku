@@ -23,25 +23,21 @@ jobs:
           from pathlib import Path
           errors=[]
           pages=[
-            ('moje-finance.html','500 Kč'),
-            ('en/my-finances.html','CZK 500'),
-            ('moje-zdravi.html','500 Kč'),
-            ('en/my-health.html','CZK 500'),
-            ('moje-portfolio.html','500 Kč'),
-            ('en/my-portfolio.html','CZK 500'),
+            'moje-finance.html','en/my-finances.html',
+            'moje-zdravi.html','en/my-health.html',
+            'moje-portfolio.html','en/my-portfolio.html',
           ]
-          for name,price in pages:
+          for name in pages:
               t=Path(name).read_text(encoding='utf-8')
-              for required in (price,'siteHeader'):
-                  if required not in t:
-                      errors.append(f'{name}: missing {required}')
+              if 'siteHeader' not in t:
+                  errors.append(f'{name}: missing siteHeader')
           for name in ('moje-portfolio.html','en/my-portfolio.html'):
               t=Path(name).read_text(encoding='utf-8')
               if 'data-cart-add="portfolio"' not in t:
                   errors.append(f'{name}: missing portfolio cart action')
           cart=Path('cart.js').read_text(encoding='utf-8')
           header=Path('header.js').read_text(encoding='utf-8')
-          for required in ("[data-cart-add]","[data-cart-buy]","localStorage","data-cart-count"):
+          for required in ("[data-cart-add]","[data-cart-buy]","localStorage","data-cart-count","500 Kč","CZK 500"):
               if required not in cart+header:
                   errors.append(f'shared frontend: missing {required}')
           if errors:
