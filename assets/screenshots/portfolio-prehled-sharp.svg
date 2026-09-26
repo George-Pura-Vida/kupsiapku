@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1080" role="img" aria-labelledby="t d">
+<title id="t">Moje portfolio</title><desc id="d">Přehled investičního portfolia 190 950 Kč, zisk 51 950 Kč a výnos 37,4 %.</desc>
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#f8fbfd"/><stop offset="1" stop-color="#e9f8f4"/></linearGradient><linearGradient id="g" x2="1"><stop stop-color="#079b72"/><stop offset="1" stop-color="#16c58c"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#123" flood-opacity=".10"/></filter></defs>
+<rect width="720" height="1080" rx="42" fill="url(#bg)"/>
+<g font-family="Arial,Helvetica,sans-serif" fill="#071a2f">
+<text x="55" y="88" font-size="36" font-weight="800">MOJE PORTFOLIO</text><text x="55" y="122" font-size="21" fill="#6d7b88" font-weight="600">Majetek pod kontrolou.</text>
+<circle cx="650" cy="83" r="35" fill="url(#g)"/><text x="650" y="94" text-anchor="middle" font-size="24" fill="#fff" font-weight="800">JJ</text>
+<rect x="34" y="160" width="652" height="310" rx="30" fill="#fff" filter="url(#s)"/>
+<text x="70" y="215" font-size="18" fill="#89949d" font-weight="700">CELKOVÁ HODNOTA PORTFOLIA</text>
+<text x="70" y="290" font-size="66" font-weight="800">190 950 Kč</text><text x="70" y="337" font-size="31" fill="#079b72" font-weight="800">51 950 Kč · +37,4 %</text><text x="70" y="372" font-size="20" fill="#7a8792">od začátku</text>
+<rect x="520" y="205" width="125" height="135" rx="25" fill="#e2f7f0"/><text x="582" y="245" text-anchor="middle" font-size="17" fill="#70808a">Strategie</text><text x="582" y="295" text-anchor="middle" font-size="46" fill="#079b72" font-weight="800">74</text><text x="582" y="324" text-anchor="middle" font-size="18" fill="#70808a">/ 100</text>
+<line x1="70" y1="405" x2="650" y2="405" stroke="#e2e8ec"/><text x="90" y="438" font-size="16" fill="#74818b">Za měsíc</text><text x="305" y="438" font-size="16" fill="#74818b">Za rok</text><text x="515" y="438" font-size="16" fill="#74818b">Celkem</text><text x="515" y="465" font-size="22" font-weight="800">+37,4 %</text>
+<rect x="34" y="500" width="310" height="78" rx="22" fill="url(#g)"/><text x="189" y="549" text-anchor="middle" font-size="24" fill="#fff" font-weight="800">+ Přidat investici</text>
+<rect x="376" y="500" width="310" height="78" rx="22" fill="#fff" stroke="#079b72" stroke-width="3"/><text x="531" y="549" text-anchor="middle" font-size="22" fill="#08795d" font-weight="800">⇧ Importovat CSV</text>
+<rect x="34" y="612" width="652" height="370" rx="30" fill="#fff" filter="url(#s)"/><text x="70" y="665" font-size="17" fill="#84909b" font-weight="700">MOJE PORTFOLIO V CZK</text><text x="70" y="713" font-size="37" font-weight="800">Vývoj hodnoty</text>
+<path d="M85 910 L165 890 L245 880 L325 825 L405 770 L485 740 L565 710 L640 680" fill="none" stroke="#079b72" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M85 910 L165 890 L245 880 L325 825 L405 770 L485 740 L565 710 L640 680 L640 930 L85 930Z" fill="#079b72" opacity=".12"/>
+<g font-size="15" fill="#71808c"><text x="75" y="958">Led</text><text x="155" y="958">Úno</text><text x="235" y="958">Bře</text><text x="315" y="958">Dub</text><text x="395" y="958">Kvě</text><text x="475" y="958">Čer</text><text x="555" y="958">Čvc</text><text x="625" y="958">Zář</text></g>
+<rect x="0" y="1005" width="720" height="75" fill="#fff"/><g font-size="15" font-weight="700" text-anchor="middle"><text x="72" y="1050" fill="#079b72">⌂ Přehled</text><text x="215" y="1050" fill="#6f7c88">◷ Portfolio</text><text x="360" y="1050" fill="#6f7c88">▥ Statistiky</text><text x="505" y="1050" fill="#6f7c88">≡ Transakce</text><text x="645" y="1050" fill="#6f7c88">⌁ Trhy</text></g>
+</g></svg>
