@@ -49,6 +49,19 @@ jobs:
           for required in ("[data-cart-add]","[data-cart-buy]","localStorage","data-cart-count","500 Kč","CZK 500"):
               if required not in cart+header:
                   errors.append(f'shared frontend: missing {required}')
+          required_sections = {
+              'moje-zdravi.html': ['Co Moje zdraví umí','BMR, AMR a kalorická bilance','Import a export'],
+              'en/my-health.html': ['What My Health can do','BMR, AMR & calorie balance','Import & export'],
+              'moje-finance.html': ['Co Moje finance umí','Finanční zrcadlo','Celý váš finanční obraz'],
+              'en/my-finances.html': ['What My Finances can do','Financial snapshot','complete financial picture'],
+              'moje-portfolio.html': ['Vaše investice. Jedno portfolio. Jasný přehled.','Statistiky','Grafy a alokace'],
+              'en/my-portfolio.html': ['Your investments. One portfolio. A clear overview.','Statistics','Charts & allocation'],
+          }
+          for name, needles in required_sections.items():
+              t=Path(name).read_text(encoding='utf-8')
+              for needle in needles:
+                  if needle not in t:
+                      errors.append(f'{name}: missing restored detail section: {needle}')
           if errors:
               raise SystemExit('\n'.join(errors))
           print('Shared frontend validation OK')
