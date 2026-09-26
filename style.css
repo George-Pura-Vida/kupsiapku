@@ -784,3 +784,16 @@ input:not([type="checkbox"]):not([type="radio"]),select,textarea{min-height:48px
 @media(max-width:600px){.affiliateHero{padding:42px 0}.affiliateHero h1{font-size:clamp(36px,11vw,44px)}.affiliateColumns{gap:18px}.affiliateColumns .panel{padding:20px 16px}.affiliateColumns .fields{grid-template-columns:1fr}.affiliateColumns .field{min-width:0}.affiliateColumns input{width:100%;font-size:16px}.affiliateColumns form .btn{width:100%}.shareActions{flex-direction:column}.shareActions .btn{width:100%}.shareBox{font-size:14px}.qrImage{width:min(100%,320px)}}
 
 @media(max-width:600px){.qrImage{width:min(100%,190px)}}
+
+/* Simple responsive header for standalone pages */
+.simpleMenuToggle{display:none;border:0;background:#fff;color:var(--navy);font-size:27px;line-height:1;width:46px;height:46px;border-radius:12px;cursor:pointer}
+.simpleNav .simpleMainNav{margin-left:auto;display:flex;align-items:center;gap:clamp(16px,2vw,34px)}
+.simpleNav .simpleMainNav a{display:inline-flex!important;text-decoration:none;font-weight:800;font-size:16px;white-space:nowrap}
+@media(max-width:800px){
+  header .simpleNav{height:66px!important;min-height:66px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;position:relative}
+  .simpleNav .brand{font-size:20px!important}
+  .simpleMenuToggle{display:grid!important;place-items:center;flex:0 0 46px}
+  .simpleNav .simpleMainNav{display:none!important;position:absolute;top:66px;left:16px;right:16px;margin:0!important;padding:10px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 18px 45px #17395c24;z-index:100;flex-direction:column;align-items:stretch;gap:0}
+  .simpleNav .simpleMainNav.open{display:flex!important}
+  .simpleNav .simpleMainNav a{display:flex!important;align-items:center!important;min-height:48px!important;padding:12px 14px!important;font-size:16px!important;border-radius:11px}
+}
