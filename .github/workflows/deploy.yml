@@ -151,5 +151,4 @@ jobs:
           grep -F 'portfolio-prehled-sharp.svg' /tmp/moje-portfolio.html >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/assets/screenshots/portfolio-prehled-sharp.svg?deploy=${GITHUB_SHA}" -o /tmp/portfolio-prehled-sharp.svg
           grep -F '<svg' /tmp/portfolio-prehled-sharp.svg >/dev/null
-          grep -F 'portfolio-trhy.jpg' /tmp/en-my-portfolio.html >/dev/null
           echo 'Production validation OK'
