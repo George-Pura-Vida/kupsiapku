@@ -62,6 +62,11 @@ jobs:
               for needle in needles:
                   if needle not in t:
                       errors.append(f'{name}: missing restored detail section: {needle}')
+          faq_pages = ['moje-zdravi.html','en/my-health.html','moje-finance.html','en/my-finances.html','moje-portfolio.html','en/my-portfolio.html']
+          for name in faq_pages:
+              t=Path(name).read_text(encoding='utf-8')
+              if 'id="faq"' not in t:
+                  errors.append(f'{name}: missing standardized FAQ')
           if errors:
               raise SystemExit('\n'.join(errors))
           print('Shared frontend validation OK')
