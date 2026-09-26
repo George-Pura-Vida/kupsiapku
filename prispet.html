@@ -10,17 +10,11 @@
     <button class="siteHeader-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otevřít menu" hidden><span aria-hidden="true">☰</span></button>
     <nav class="siteHeader-nav" id="site-navigation" aria-label="Hlavní navigace">
       <a href="/index.html#apps">Aplikace</a>
-      <a href="/index.html#gallery">Ukázky</a>
-      <a href="/index.html#jak-to-funguje">Jak to funguje</a>
-      <a href="/index.html#faq">FAQ</a>
-      <a href="/index.html#about">O mně</a>
       <a href="/doporucit.html">Doporučit a vydělat</a>
       <a href="/prispet.html" aria-current="page">Přispět</a>
-      <a href="/index.html#checkout">Objednat</a>
     </nav>
   </div>
 </header>
 <main><section class="affiliateHero"><div class="wrap affiliateGrid"><div><div class="eyebrow">Podpora projektu</div><h1>Pomoz tvořit.<br><span>Přispěj darem.</span></h1><p class="lead">Tvůj příspěvek pomáhá financovat vývoj, provoz a další bezplatné ukázky českých webových aplikací.</p><div class="notice">Dar je dobrovolný a nevzniká jím nárok na produkt ani službu.</div></div><div class="panel"><h2>Na co dar použijeme</h2><p>Vývoj nových funkcí, bezpečný provoz, testování přístupnosti a tvorbu užitečných aplikací.</p></div></div></section>
 <section class="section"><div class="wrap donationGrid"><form id="donationForm" class="panel"><h2>Vyber částku</h2><div class="amountChoices"><button type="button" data-amount="100">100 Kč</button><button type="button" data-amount="250">250 Kč</button><button type="button" data-amount="500">500 Kč</button><button type="button" data-amount="1000">1 000 Kč</button></div><div class="field"><label for="donationAmountInput">Vlastní částka v Kč *</label><input id="donationAmountInput" name="amount" type="number" min="50" max="100000" step="1" value="250" required></div><div class="field"><label for="donorName">Jméno nebo přezdívka</label><input id="donorName" name="name" autocomplete="name"></div><div class="field"><label for="donorEmail">E-mail pro potvrzení</label><input id="donorEmail" name="email" type="email" autocomplete="email"></div><div class="field"><label for="donorMessage">Vzkaz projektu</label><textarea id="donorMessage" name="message" rows="4" maxlength="500"></textarea></div><p><button class="btn" type="submit">Připravit dar</button></p><p id="donationStatus" class="formStatus" role="status" aria-live="polite"></p></form><aside id="donationResult" class="panel donationResult" hidden><h2>Údaje k daru</h2><div class="money"><span>Částka</span><strong id="donationAmount">—</strong></div><p>ID daru: <b id="donationId">—</b><br>Variabilní symbol: <b id="donationVs">—</b></p><div id="paymentReady" hidden><img id="donationQr" class="qrImage" alt=""><p class="legal">Naskenuj QR v bankovní aplikaci a před odesláním zkontroluj údaje.</p></div><div id="paymentMissing" class="notice" hidden>Dar je evidovaný. Platební QR se zobrazí po nastavení účtu provozovatele.</div></aside></div></section></main>
 <footer><div class="wrap foot"><div><div class="brand" style="color:white">🚀 KUP SI <b>APKU</b></div><p>Malé aplikace. Velké změny.</p></div><div><b>Právní</b><p><a href="/ochrana-osobnich-udaju.html">Ochrana osobních údajů</a><br><a href="/obchodni-podminky.html">Obchodní podmínky</a></p></div></div></footer><script src="qrcode.js"></script><script src="donation.js" defer></script></body></html>
-
