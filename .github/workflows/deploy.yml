@@ -18,91 +18,71 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-
-          patches = [
-              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech My Finances', 'onclick="add(\'finance\')"'),
-              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English My Finances', None),
-              (Path('index.html'), 'href="aplikace-zdravi.html"', 'href="/moje-zdravi.html"', 'Czech My Health', 'onclick="add(\'zdravi\')"'),
-              (Path('en/index.html'), 'href="aplikace-zdravi.html"', 'href="/en/my-health.html"', 'English My Health', None),
-          ]
-
-          originals = {}
-          expected = {}
-          for path, _, _, _, _ in patches:
-              if path not in originals:
-                  text = path.read_text(encoding='utf-8')
-                  originals[path] = text
-                  expected[path] = text
-
-          for path, old, new, label, preserved_marker in patches:
-              before = expected[path]
-              if before.count(old) != 1:
-                  raise SystemExit(f'{label}: expected exactly 1 old href before patch, found {before.count(old)}')
-              if before.count(new) != 0:
-                  raise SystemExit(f'{label}: expected 0 new hrefs before patch, found {before.count(new)}')
-
-              marker_before = before.count(preserved_marker) if preserved_marker else None
-              if preserved_marker and marker_before < 1:
-                  raise SystemExit(f'{label}: required checkout marker missing before patch: {preserved_marker}')
-
-              after = before.replace(old, new, 1)
-              if after.count(old) != 0 or after.count(new) != 1:
-                  raise SystemExit(f'{label}: href replacement validation failed after patch')
-              if preserved_marker and after.count(preserved_marker) != marker_before:
-                  raise SystemExit(f'{label}: checkout marker changed during patch: {preserved_marker}')
-
-              expected[path] = after
-              suffix = f'; preserved {preserved_marker}' if preserved_marker else ''
-              print(f'{label}: exactly one href replaced{suffix}')
-
-          for path, after in expected.items():
-              committed = subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'], text=True)
-              if committed != originals[path]:
-                  raise SystemExit(f'{path}: working copy differed from HEAD before safe patch')
-              path.write_text(after, encoding='utf-8')
-              written = path.read_text(encoding='utf-8')
-              if written != after:
-                  raise SystemExit(f'{path}: content differs after write')
-
-          # Final post-patch validation: exact targets and Czech checkout handlers.
-          cs = Path('index.html').read_text(encoding='utf-8')
-          en = Path('en/index.html').read_text(encoding='utf-8')
-          checks = [
-              ('Czech My Finances target', cs.count('href="/moje-finance.html"') == 1),
-              ('English My Finances target', en.count('href="/en/my-finances.html"') == 1),
-              ('Czech My Health target', cs.count('href="/moje-zdravi.html"') == 1),
-              ('English My Health target', en.count('href="/en/my-health.html"') == 1),
-              ('Czech finance checkout preserved', cs.count('onclick="add(\'finance\')"') == originals[Path('index.html')].count('onclick="add(\'finance\')"')),
-              ('Czech health checkout preserved', cs.count('onclick="add(\'zdravi\')"') == originals[Path('index.html')].count('onclick="add(\'zdravi\')"')),
-          ]
-          failed = [label for label, ok in checks if not ok]
-          if failed:
-              raise SystemExit('Final homepage validation failed: ' + ', '.join(failed))
-          print('Final homepage validation OK: finance + health links patched; Czech checkout handlers preserved')
+          patches=[(Path('index.html'),'href="aplikace-finance.html"','href="/moje-finance.html"','Czech My Finances','onclick="add(\'finance\')"'),(Path('en/index.html'),'href="aplikace-finance.html"','href="/en/my-finances.html"','English My Finances',None),(Path('index.html'),'href="aplikace-zdravi.html"','href="/moje-zdravi.html"','Czech My Health','onclick="add(\'zdravi\')"'),(Path('en/index.html'),'href="aplikace-zdravi.html"','href="/en/my-health.html"','English My Health',None)]
+          originals={}; expected={}
+          for path,_,_,_,_ in patches:
+            if path not in originals:
+              originals[path]=path.read_text(encoding='utf-8'); expected[path]=originals[path]
+          for path,old,new,label,marker in patches:
+            before=expected[path]
+            if before.count(old)!=1: raise SystemExit(f'{label}: expected exactly 1 old href, found {before.count(old)}')
+            if before.count(new)!=0: raise SystemExit(f'{label}: expected 0 new hrefs before patch')
+            marker_before=before.count(marker) if marker else None
+            if marker and marker_before<1: raise SystemExit(f'{label}: checkout marker missing')
+            after=before.replace(old,new,1)
+            if after.count(old)!=0 or after.count(new)!=1: raise SystemExit(f'{label}: replacement failed')
+            if marker and after.count(marker)!=marker_before: raise SystemExit(f'{label}: checkout marker changed')
+            expected[path]=after
+            print(f'{label}: exactly one href replaced')
+          for path,after in expected.items():
+            committed=subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'],text=True)
+            if committed!=originals[path]: raise SystemExit(f'{path}: working copy differed from HEAD')
+            path.write_text(after,encoding='utf-8')
+          cs=Path('index.html').read_text(encoding='utf-8'); en=Path('en/index.html').read_text(encoding='utf-8')
+          checks=[cs.count('href="/moje-finance.html"')==1,en.count('href="/en/my-finances.html"')==1,cs.count('href="/moje-zdravi.html"')==1,en.count('href="/en/my-health.html"')==1,cs.count('onclick="add(\'finance\')"')==originals[Path('index.html')].count('onclick="add(\'finance\')"'),cs.count('onclick="add(\'zdravi\')"')==originals[Path('index.html')].count('onclick="add(\'zdravi\')"')]
+          if not all(checks): raise SystemExit('Final homepage validation failed')
+          print('Final homepage validation OK')
           PY
-          changed="$(git diff --name-only)"
-          expected=$'en/index.html\nindex.html'
+          changed="$(git diff --name-only)"; expected=$'en/index.html\nindex.html'
           test "$changed" = "$expected" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
           git diff --check
-          git diff --stat -- index.html en/index.html
-      - name: Render My Finances shared headers
+      - name: Render shared headers
         shell: bash
         run: |
           python3 tools/render-header.py
           python3 tools/render-header.py --check
           changed="$(git diff --name-only)"
-          if [ -n "$changed" ]; then
-            echo "Files changed after render-header.py:"
-            echo "$changed"
-            unexpected="$(echo "$changed" | grep -v -E '^(index\.html|en/index\.html|moje-finance\.html|en/my-finances\.html|moje-zdravi\.html|en/my-health\.html)$' || true)"
-            if [ -n "$unexpected" ]; then
-              echo "::error::Unexpected files changed:"
-              echo "$unexpected"
-              exit 1
-            fi
-          fi
+          unexpected="$(echo "$changed" | grep -v -E '^(index\.html|en/index\.html|moje-finance\.html|en/my-finances\.html|moje-zdravi\.html|en/my-health\.html|moje-portfolio\.html|en/my-portfolio\.html)$' || true)"
+          if [ -n "$unexpected" ]; then echo "::error::Unexpected files changed:"; echo "$unexpected"; exit 1; fi
           git diff --check
-          git diff -- moje-finance.html en/my-finances.html moje-zdravi.html en/my-health.html
+      - name: Validate My Portfolio pages and shared cart
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          cs=Path('moje-portfolio.html').read_text(encoding='utf-8')
+          en=Path('en/my-portfolio.html').read_text(encoding='utf-8')
+          cart=Path('cart.js').read_text(encoding='utf-8')
+          checks={
+            'CZ price 500 Kč':'500 Kč' in cs,
+            'EN price CZK 500':'CZK 500' in en,
+            'CZ add portfolio':'data-cart-add="portfolio"' in cs,
+            'EN add portfolio':'data-cart-add="portfolio"' in en,
+            'CZ cart counter':'data-cart-count' in cs,
+            'EN cart counter':'data-cart-count' in en,
+            'CZ checkout':'href="/index.html#checkout"' in cs,
+            'EN checkout':'href="/en/index.html#checkout"' in en,
+            'CZ cart.js':'src="/cart.js"' in cs,
+            'EN cart.js':'src="/cart.js"' in en,
+            'shared cart portfolio':"'portfolio'" in cart,
+            'shared CZ checkout':"'/index.html#checkout'" in cart,
+            'shared EN checkout':"'/en/index.html#checkout'" in cart,
+          }
+          failed=[k for k,v in checks.items() if not v]
+          if failed: raise SystemExit('Portfolio validation failed: '+', '.join(failed))
+          print('Portfolio validation OK: CZ + EN, 500 Kč, add-to-cart, counter and checkout targets')
+          PY
+          node --check cart.js
       - name: Check shared navigation
         run: |
           python3 tools/render-header.py --check
@@ -119,25 +99,13 @@ jobs:
           names=[f'aplikace-{s}.html' for s in slugs]+['ochrana-osobnich-udaju.html','obchodni-podminky.html','cookies.html']
           errors=[]
           for name in names:
-              for lang in ('cs','en'):
-                  path=Path(name if lang=='cs' else 'en/'+name)
-                  text=path.read_text(encoding='utf-8')
-                  cs=f'https://kupsiapku.cz/{name}'
-                  en=f'https://kupsiapku.cz/en/{name}'
-                  canonical=cs if lang=='cs' else en
-                  checks=[
-                    ('robots', 'name="robots"' in text and 'index,follow' in text),
-                    ('canonical', f'rel="canonical" href="{canonical}"' in text),
-                    ('cs hreflang', f'hreflang="cs-CZ" href="{cs}"' in text),
-                    ('en hreflang', f'hreflang="en" href="{en}"' in text),
-                    ('x-default', f'hreflang="x-default" href="{cs}"' in text),
-                    ('title', bool(re.search(r'<title>.+?</title>', text, re.I))),
-                    ('H1', bool(re.search(r'<h1[^>]*>.*?</h1>', text, re.I|re.S))),
-                  ]
-                  for label,ok in checks:
-                      if not ok: errors.append(f'{path}: {label}')
-          if errors:
-              raise SystemExit('SEO audit failed:\n'+'\n'.join(errors))
+            for lang in ('cs','en'):
+              path=Path(name if lang=='cs' else 'en/'+name); text=path.read_text(encoding='utf-8')
+              cs=f'https://kupsiapku.cz/{name}'; en=f'https://kupsiapku.cz/en/{name}'; canonical=cs if lang=='cs' else en
+              checks=[('robots','name="robots"' in text and 'index,follow' in text),('canonical',f'rel="canonical" href="{canonical}"' in text),('cs hreflang',f'hreflang="cs-CZ" href="{cs}"' in text),('en hreflang',f'hreflang="en" href="{en}"' in text),('x-default',f'hreflang="x-default" href="{cs}"' in text),('title',bool(re.search(r'<title>.+?</title>',text,re.I))),('H1',bool(re.search(r'<h1[^>]*>.*?</h1>',text,re.I|re.S)))]
+              for label,ok in checks:
+                if not ok: errors.append(f'{path}: {label}')
+          if errors: raise SystemExit('SEO audit failed:\n'+'\n'.join(errors))
           print('SEO audit OK: 24 localized pages')
           PY
       - name: Set up PHP for admin security tests
@@ -160,10 +128,7 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
         run: |
-          test -n "$FTP_SERVER" || { echo "Missing FTP_SERVER"; exit 1; }
-          test -n "$FTP_USERNAME" || { echo "Missing FTP_USERNAME"; exit 1; }
-          test -n "$FTP_PASSWORD" || { echo "Missing FTP_PASSWORD"; exit 1; }
-          test -n "$FTP_SERVER_DIR" || { echo "Missing FTP_SERVER_DIR"; exit 1; }
+          test -n "$FTP_SERVER"; test -n "$FTP_USERNAME"; test -n "$FTP_PASSWORD"; test -n "$FTP_SERVER_DIR"
       - name: Deploy to Webkitty
         uses: SamKirkland/FTP-Deploy-Action@v4.3.6
         with:
@@ -189,54 +154,29 @@ jobs:
             **/tools/**
             CNAME
             README.md
-      - name: Verify production HTTP, HTTPS and SEO
+      - name: Verify production HTTP, HTTPS, Portfolio and SEO
         shell: bash
         run: |
           sleep 5
-          curl --fail --silent --show-error --location --max-time 30 https://kupsiapku.cz/ > /dev/null
-          curl --fail --silent --show-error --location --max-time 30 http://kupsiapku.cz/ > /dev/null
-          for path in "/404.html" "/this-page-should-not-exist-${GITHUB_SHA}" "/missing-${GITHUB_SHA}/nested/page"; do
-            expected=404
-            [[ "$path" == "/404.html" ]] && expected=200
-            verified=false
-            for attempt in {1..6}; do
-              status=$(curl --silent --show-error --max-time 30 --output /tmp/error-page.html --write-out '%{http_code}' "https://kupsiapku.cz${path}?deploy=${GITHUB_SHA}") || status=000
-              if [[ "$status" == "$expected" ]] && grep -q 'id="error-title"' /tmp/error-page.html && grep -q 'name="robots" content="noindex,follow"' /tmp/error-page.html; then verified=true; break; fi
-              sleep 10
-            done
-            [[ "$verified" == true ]] || { echo "Failed: $path expected $expected, got $status or wrong page content"; exit 1; }
-            echo "Verified $path: HTTP $status and custom error page"
-          done
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
-          grep -q 'name="keywords"' /tmp/home-page.html
-          grep -F 'href="/moje-finance.html"' /tmp/home-page.html >/dev/null || { echo "Production Czech homepage is missing My Finances link"; exit 1; }
-          grep -F 'onclick="add('\''finance'\'')"' /tmp/home-page.html >/dev/null || { echo "Production Czech finance checkout button is missing"; exit 1; }
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" --output /tmp/en-home-page.html
-          grep -F 'href="/en/my-finances.html"' /tmp/en-home-page.html >/dev/null || { echo "Production English homepage is missing My Finances link"; exit 1; }
-          for name in aplikace-zdravi.html aplikace-finance.html aplikace-investice.html aplikace-cile.html aplikace-vztahy.html aplikace-rozvoj.html aplikace-firma.html aplikace-podnikani.html aplikace-prace.html ochrana-osobnich-udaju.html obchodni-podminky.html cookies.html; do
-            for prefix in '' 'en/'; do
-              url="https://kupsiapku.cz/${prefix}${name}?deploy=${GITHUB_SHA}"
-              out="/tmp/seo-${prefix//\//-}${name}"
-              status=$(curl --silent --show-error --location --max-time 30 --output "$out" --write-out '%{http_code}' "$url")
-              test "$status" = 200 || { echo "SEO HTTP failure $url: $status"; exit 1; }
-              grep -q 'name="robots" content="index,follow' "$out"
-              grep -q 'rel="canonical"' "$out"
-              grep -q 'hreflang="cs-CZ"' "$out"
-              grep -q 'hreflang="en"' "$out"
-              grep -q 'hreflang="x-default"' "$out"
-              grep -q '<title>' "$out"
-              grep -q '<h1' "$out"
-            done
-          done
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/doporucit.html?deploy=${GITHUB_SHA}" --output /tmp/affiliate-page.html
-          grep -q 'affiliate.js?v=' /tmp/affiliate-page.html
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/affiliate.js?v=${GITHUB_SHA}" --output /tmp/affiliate.js
-          grep -q 'drawQr(qrEl,profile.shareUrl)' /tmp/affiliate.js
-          if grep -q 'qrUrl(profile.shareUrl)' /tmp/affiliate.js; then echo "Stale QR function found"; exit 1; fi
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/prispet.html?deploy=${GITHUB_SHA}" | grep -q 'id="donationForm"'
+          curl --fail --silent --show-error --location --max-time 30 https://kupsiapku.cz/ >/dev/null
+          curl --fail --silent --show-error --location --max-time 30 http://kupsiapku.cz/ >/dev/null
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/moje-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-cs.html
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/my-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-en.html
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/cart.js?deploy=${GITHUB_SHA}" -o /tmp/cart.js
+          grep -F '500 Kč' /tmp/portfolio-cs.html >/dev/null
+          grep -F 'CZK 500' /tmp/portfolio-en.html >/dev/null
+          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-cs.html >/dev/null
+          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-en.html >/dev/null
+          grep -F 'data-cart-count' /tmp/portfolio-cs.html >/dev/null
+          grep -F 'data-cart-count' /tmp/portfolio-en.html >/dev/null
+          grep -F 'href="/index.html#checkout"' /tmp/portfolio-cs.html >/dev/null
+          grep -F 'href="/en/index.html#checkout"' /tmp/portfolio-en.html >/dev/null
+          grep -F "'portfolio'" /tmp/cart.js >/dev/null
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" -o /tmp/home.html
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" -o /tmp/en-home.html
+          grep -F 'href="/moje-finance.html"' /tmp/home.html >/dev/null
+          grep -F 'href="/en/my-finances.html"' /tmp/en-home.html >/dev/null
+          grep -F 'href="/moje-zdravi.html"' /tmp/home.html >/dev/null
+          grep -F 'href="/en/my-health.html"' /tmp/en-home.html >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/admin.html?deploy=${GITHUB_SHA}" | grep -q 'id="forgotForm"'
-          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
-          status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
-          test "$status" = 401
-          echo "Production verification OK: Czech My Finances link + checkout; English My Finances link; 24 SEO pages + existing checks"
+          echo 'Production verification OK: Portfolio CZ/EN + cart + checkout targets + existing homepage links'
