@@ -12,36 +12,61 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Czech and English My Finances and My Health homepage links safely
+      - name: Patch Czech and English homepage product links safely
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-          patches=[(Path('index.html'),'href="aplikace-finance.html"','href="/moje-finance.html"','Czech My Finances','onclick="add(\'finance\')"'),(Path('en/index.html'),'href="aplikace-finance.html"','href="/en/my-finances.html"','English My Finances',None),(Path('index.html'),'href="aplikace-zdravi.html"','href="/moje-zdravi.html"','Czech My Health','onclick="add(\'zdravi\')"'),(Path('en/index.html'),'href="aplikace-zdravi.html"','href="/en/my-health.html"','English My Health',None)]
-          originals={}; expected={}
-          for path,_,_,_,_ in patches:
-            if path not in originals:
-              originals[path]=path.read_text(encoding='utf-8'); expected[path]=originals[path]
-          for path,old,new,label,marker in patches:
+
+          files={Path('index.html'):Path('index.html').read_text(encoding='utf-8'),Path('en/index.html'):Path('en/index.html').read_text(encoding='utf-8')}
+          expected=dict(files)
+          patches=[
+            (Path('index.html'),'href="aplikace-finance.html"','href="/moje-finance.html"','CZ Finance href'),
+            (Path('en/index.html'),'href="aplikace-finance.html"','href="/en/my-finances.html"','EN Finance href'),
+            (Path('index.html'),'href="aplikace-zdravi.html"','href="/moje-zdravi.html"','CZ Health href'),
+            (Path('en/index.html'),'href="aplikace-zdravi.html"','href="/en/my-health.html"','EN Health href'),
+            (Path('index.html'),'<h3>Moje investice</h3>','<h3>Moje portfolio</h3>','CZ Portfolio name'),
+            (Path('index.html'),'href="aplikace-investice.html"','href="/moje-portfolio.html"','CZ Portfolio href'),
+            (Path('index.html'),'onclick="add(\'investice\')"','onclick="add(\'portfolio\')"','CZ Portfolio cart product'),
+            (Path('en/index.html'),'<h3>My Investments</h3>','<h3>My Portfolio</h3>','EN Portfolio name'),
+            (Path('en/index.html'),'href="aplikace-investice.html"','href="/en/my-portfolio.html"','EN Portfolio href'),
+          ]
+          for path,old,new,label in patches:
             before=expected[path]
-            if before.count(old)!=1: raise SystemExit(f'{label}: expected exactly 1 old href, found {before.count(old)}')
-            if before.count(new)!=0: raise SystemExit(f'{label}: expected 0 new hrefs before patch')
-            marker_before=before.count(marker) if marker else None
-            if marker and marker_before<1: raise SystemExit(f'{label}: checkout marker missing')
-            after=before.replace(old,new,1)
-            if after.count(old)!=0 or after.count(new)!=1: raise SystemExit(f'{label}: replacement failed')
-            if marker and after.count(marker)!=marker_before: raise SystemExit(f'{label}: checkout marker changed')
-            expected[path]=after
-            print(f'{label}: exactly one href replaced')
+            old_count=before.count(old); new_count=before.count(new)
+            if old_count==1 and new_count==0:
+              expected[path]=before.replace(old,new,1)
+              print(f'{label}: patched exactly once')
+            elif old_count==0 and new_count==1:
+              print(f'{label}: already patched')
+            else:
+              raise SystemExit(f'{label}: unsafe counts old={old_count}, new={new_count}')
+
+          cs0=files[Path('index.html')]; cs=expected[Path('index.html')]
+          en0=files[Path('en/index.html')]; en=expected[Path('en/index.html')]
+          if cs0.count('onclick="add(\'finance\')"') != cs.count('onclick="add(\'finance\')"'): raise SystemExit('CZ Finance cart changed unexpectedly')
+          if cs0.count('onclick="add(\'zdravi\')"') != cs.count('onclick="add(\'zdravi\')"'): raise SystemExit('CZ Health cart changed unexpectedly')
+          checks={
+            'CZ Portfolio name':cs.count('<h3>Moje portfolio</h3>')==1,
+            'CZ Portfolio href':cs.count('href="/moje-portfolio.html"')==1,
+            'CZ Portfolio product':cs.count('onclick="add(\'portfolio\')"')==1,
+            'CZ old Investments product removed':cs.count('onclick="add(\'investice\')"')==0,
+            'EN Portfolio name':en.count('<h3>My Portfolio</h3>')==1,
+            'EN Portfolio href':en.count('href="/en/my-portfolio.html"')==1,
+            'CZ Finance href':cs.count('href="/moje-finance.html"')==1,
+            'EN Finance href':en.count('href="/en/my-finances.html"')==1,
+            'CZ Health href':cs.count('href="/moje-zdravi.html"')==1,
+            'EN Health href':en.count('href="/en/my-health.html"')==1,
+          }
+          failed=[k for k,v in checks.items() if not v]
+          if failed: raise SystemExit('Homepage validation failed: '+', '.join(failed))
+
           for path,after in expected.items():
             committed=subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'],text=True)
-            if committed!=originals[path]: raise SystemExit(f'{path}: working copy differed from HEAD')
+            if committed!=files[path]: raise SystemExit(f'{path}: working copy differed from HEAD before patch')
             path.write_text(after,encoding='utf-8')
-          cs=Path('index.html').read_text(encoding='utf-8'); en=Path('en/index.html').read_text(encoding='utf-8')
-          checks=[cs.count('href="/moje-finance.html"')==1,en.count('href="/en/my-finances.html"')==1,cs.count('href="/moje-zdravi.html"')==1,en.count('href="/en/my-health.html"')==1,cs.count('onclick="add(\'finance\')"')==originals[Path('index.html')].count('onclick="add(\'finance\')"'),cs.count('onclick="add(\'zdravi\')"')==originals[Path('index.html')].count('onclick="add(\'zdravi\')"')]
-          if not all(checks): raise SystemExit('Final homepage validation failed')
-          print('Final homepage validation OK')
+          print('Homepage content validation OK: only targeted product strings were replaced')
           PY
           changed="$(git diff --name-only)"; expected=$'en/index.html\nindex.html'
           test "$changed" = "$expected" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
@@ -55,32 +80,28 @@ jobs:
           unexpected="$(echo "$changed" | grep -v -E '^(index\.html|en/index\.html|moje-finance\.html|en/my-finances\.html|moje-zdravi\.html|en/my-health\.html|moje-portfolio\.html|en/my-portfolio\.html)$' || true)"
           if [ -n "$unexpected" ]; then echo "::error::Unexpected files changed:"; echo "$unexpected"; exit 1; fi
           git diff --check
-      - name: Validate My Portfolio pages and shared cart
+      - name: Validate My Portfolio pages, homepage cards and shared cart
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          cs=Path('moje-portfolio.html').read_text(encoding='utf-8')
-          en=Path('en/my-portfolio.html').read_text(encoding='utf-8')
-          cart=Path('cart.js').read_text(encoding='utf-8')
+          cs=Path('moje-portfolio.html').read_text(encoding='utf-8'); en=Path('en/my-portfolio.html').read_text(encoding='utf-8')
+          home=Path('index.html').read_text(encoding='utf-8'); enhome=Path('en/index.html').read_text(encoding='utf-8'); cart=Path('cart.js').read_text(encoding='utf-8')
           checks={
-            'CZ price 500 Kč':'500 Kč' in cs,
-            'EN price CZK 500':'CZK 500' in en,
-            'CZ add portfolio':'data-cart-add="portfolio"' in cs,
-            'EN add portfolio':'data-cart-add="portfolio"' in en,
-            'CZ cart counter':'data-cart-count' in cs,
-            'EN cart counter':'data-cart-count' in en,
-            'CZ checkout':'href="/index.html#checkout"' in cs,
-            'EN checkout':'href="/en/index.html#checkout"' in en,
-            'CZ cart.js':'src="/cart.js"' in cs,
-            'EN cart.js':'src="/cart.js"' in en,
-            'shared cart portfolio':"'portfolio'" in cart,
-            'shared CZ checkout':"'/index.html#checkout'" in cart,
-            'shared EN checkout':"'/en/index.html#checkout'" in cart,
+            'CZ price 500 Kč':'500 Kč' in cs,'EN price CZK 500':'CZK 500' in en,
+            'CZ add portfolio':'data-cart-add="portfolio"' in cs,'EN add portfolio':'data-cart-add="portfolio"' in en,
+            'CZ cart counter':'data-cart-count' in cs,'EN cart counter':'data-cart-count' in en,
+            'CZ checkout':'href="/index.html#checkout"' in cs,'EN checkout':'href="/en/index.html#checkout"' in en,
+            'CZ cart.js':'src="/cart.js"' in cs,'EN cart.js':'src="/cart.js"' in en,
+            'shared cart portfolio':"'portfolio'" in cart,'shared CZ checkout':"'/index.html#checkout'" in cart,'shared EN checkout':"'/en/index.html#checkout'" in cart,
+            'CZ homepage Portfolio':'<h3>Moje portfolio</h3>' in home and 'href="/moje-portfolio.html"' in home and 'onclick="add(\'portfolio\')"' in home,
+            'EN homepage Portfolio':'<h3>My Portfolio</h3>' in enhome and 'href="/en/my-portfolio.html"' in enhome,
+            'CZ old Investments absent':'<h3>Moje investice</h3>' not in home and 'onclick="add(\'investice\')"' not in home,
+            'EN old Investments absent':'<h3>My Investments</h3>' not in enhome,
           }
           failed=[k for k,v in checks.items() if not v]
           if failed: raise SystemExit('Portfolio validation failed: '+', '.join(failed))
-          print('Portfolio validation OK: CZ + EN, 500 Kč, add-to-cart, counter and checkout targets')
+          print('Portfolio validation OK: homepage CZ/EN + product pages + shared cart')
           PY
           node --check cart.js
       - name: Check shared navigation
@@ -163,20 +184,21 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/moje-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-cs.html
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/my-portfolio.html?deploy=${GITHUB_SHA}" -o /tmp/portfolio-en.html
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/cart.js?deploy=${GITHUB_SHA}" -o /tmp/cart.js
-          grep -F '500 Kč' /tmp/portfolio-cs.html >/dev/null
-          grep -F 'CZK 500' /tmp/portfolio-en.html >/dev/null
-          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-cs.html >/dev/null
-          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-en.html >/dev/null
-          grep -F 'data-cart-count' /tmp/portfolio-cs.html >/dev/null
-          grep -F 'data-cart-count' /tmp/portfolio-en.html >/dev/null
-          grep -F 'href="/index.html#checkout"' /tmp/portfolio-cs.html >/dev/null
-          grep -F 'href="/en/index.html#checkout"' /tmp/portfolio-en.html >/dev/null
+          grep -F '500 Kč' /tmp/portfolio-cs.html >/dev/null; grep -F 'CZK 500' /tmp/portfolio-en.html >/dev/null
+          grep -F 'data-cart-add="portfolio"' /tmp/portfolio-cs.html >/dev/null; grep -F 'data-cart-add="portfolio"' /tmp/portfolio-en.html >/dev/null
+          grep -F 'data-cart-count' /tmp/portfolio-cs.html >/dev/null; grep -F 'data-cart-count' /tmp/portfolio-en.html >/dev/null
+          grep -F 'href="/index.html#checkout"' /tmp/portfolio-cs.html >/dev/null; grep -F 'href="/en/index.html#checkout"' /tmp/portfolio-en.html >/dev/null
           grep -F "'portfolio'" /tmp/cart.js >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" -o /tmp/home.html
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" -o /tmp/en-home.html
-          grep -F 'href="/moje-finance.html"' /tmp/home.html >/dev/null
-          grep -F 'href="/en/my-finances.html"' /tmp/en-home.html >/dev/null
-          grep -F 'href="/moje-zdravi.html"' /tmp/home.html >/dev/null
-          grep -F 'href="/en/my-health.html"' /tmp/en-home.html >/dev/null
+          grep -F '<h3>Moje portfolio</h3>' /tmp/home.html >/dev/null
+          grep -F 'href="/moje-portfolio.html"' /tmp/home.html >/dev/null
+          grep -F 'onclick="add('"'"'portfolio'"'"')"' /tmp/home.html >/dev/null
+          ! grep -F '<h3>Moje investice</h3>' /tmp/home.html >/dev/null
+          grep -F '<h3>My Portfolio</h3>' /tmp/en-home.html >/dev/null
+          grep -F 'href="/en/my-portfolio.html"' /tmp/en-home.html >/dev/null
+          ! grep -F '<h3>My Investments</h3>' /tmp/en-home.html >/dev/null
+          grep -F 'href="/moje-finance.html"' /tmp/home.html >/dev/null; grep -F 'href="/en/my-finances.html"' /tmp/en-home.html >/dev/null
+          grep -F 'href="/moje-zdravi.html"' /tmp/home.html >/dev/null; grep -F 'href="/en/my-health.html"' /tmp/en-home.html >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/index.php" | grep -q '"ok":true'
-          echo 'Production verification OK: Portfolio CZ/EN + cart + checkout targets + existing homepage links'
+          echo 'Production verification OK: homepage Portfolio CZ/EN + shared cart + checkout targets'
