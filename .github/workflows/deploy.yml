@@ -12,43 +12,48 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - name: Patch Czech My Finances homepage link safely
+      - name: Patch Czech and English My Finances homepage links safely
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import subprocess
-          path = Path('index.html')
-          before = path.read_text(encoding='utf-8')
-          old = 'href="aplikace-finance.html"'
-          new = 'href="/moje-finance.html"'
+
+          patches = [
+              (Path('index.html'), 'href="aplikace-finance.html"', 'href="/moje-finance.html"', 'Czech'),
+              (Path('en/index.html'), 'href="aplikace-finance.html"', 'href="/en/my-finances.html"', 'English'),
+          ]
           checkout = 'onclick="add(\'finance\')"'
-          if before.count(old) != 1:
-              raise SystemExit(f'Expected exactly 1 old Czech My Finances href, found {before.count(old)}')
-          if before.count(new) != 0:
-              raise SystemExit(f'Expected 0 new Czech My Finances hrefs before patch, found {before.count(new)}')
-          checkout_before = before.count(checkout)
-          if checkout_before < 1:
-              raise SystemExit('Finance checkout button missing before patch')
-          after = before.replace(old, new, 1)
-          if after.count(old) != 0 or after.count(new) != 1:
-              raise SystemExit('Homepage href replacement validation failed')
-          if after.count(checkout) != checkout_before:
-              raise SystemExit('Finance checkout changed during patch')
-          expected = before.replace(old, new, 1)
-          if after != expected:
-              raise SystemExit('Unexpected homepage content change')
-          path.write_text(after, encoding='utf-8')
-          committed = subprocess.check_output(['git','show','HEAD:index.html'], text=True)
-          expected_from_head = committed.replace(old, new, 1)
-          if after != expected_from_head:
-              raise SystemExit('Patched homepage differs from HEAD by more than the intended href replacement')
-          print('Safe homepage patch OK: exactly one href replaced; finance checkout preserved')
+
+          for path, old, new, label in patches:
+              before = path.read_text(encoding='utf-8')
+              if before.count(old) != 1:
+                  raise SystemExit(f'{label}: expected exactly 1 old My Finances href, found {before.count(old)}')
+              if before.count(new) != 0:
+                  raise SystemExit(f'{label}: expected 0 new My Finances hrefs before patch, found {before.count(new)}')
+              checkout_before = before.count(checkout)
+              if checkout_before < 1:
+                  raise SystemExit(f'{label}: finance checkout button missing before patch')
+
+              after = before.replace(old, new, 1)
+              if after.count(old) != 0 or after.count(new) != 1:
+                  raise SystemExit(f'{label}: homepage href replacement validation failed')
+              if after.count(checkout) != checkout_before:
+                  raise SystemExit(f'{label}: finance checkout changed during patch')
+
+              committed = subprocess.check_output(['git','show',f'HEAD:{path.as_posix()}'], text=True)
+              expected_from_head = committed.replace(old, new, 1)
+              if after != expected_from_head:
+                  raise SystemExit(f'{label}: homepage differs from HEAD by more than the intended href replacement')
+
+              path.write_text(after, encoding='utf-8')
+              print(f'{label} safe homepage patch OK: exactly one href replaced; finance checkout preserved')
           PY
           changed="$(git diff --name-only)"
-          test "$changed" = "index.html" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
+          expected=$'en/index.html\nindex.html'
+          test "$changed" = "$expected" || { echo "::error::Unexpected changed files:"; echo "$changed"; exit 1; }
           git diff --check
-          git diff --stat -- index.html
+          git diff --stat -- index.html en/index.html
       - name: Render My Finances shared headers
         shell: bash
         run: |
@@ -58,7 +63,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo "Files changed after render-header.py:"
             echo "$changed"
-            unexpected="$(echo "$changed" | grep -v -E '^(index\.html|moje-finance\.html|en/my-finances\.html)$' || true)"
+            unexpected="$(echo "$changed" | grep -v -E '^(index\.html|en/index\.html|moje-finance\.html|en/my-finances\.html)$' || true)"
             if [ -n "$unexpected" ]; then
               echo "::error::Unexpected files changed:"
               echo "$unexpected"
@@ -173,8 +178,11 @@ jobs:
           done
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" --output /tmp/home-page.html
           grep -q 'name="keywords"' /tmp/home-page.html
-          grep -F 'href="/moje-finance.html"' /tmp/home-page.html >/dev/null || { echo "Production homepage is missing My Finances link"; exit 1; }
-          grep -F 'onclick="add('\''finance'\'')"' /tmp/home-page.html >/dev/null || { echo "Production finance checkout button is missing"; exit 1; }
+          grep -F 'href="/moje-finance.html"' /tmp/home-page.html >/dev/null || { echo "Production Czech homepage is missing My Finances link"; exit 1; }
+          grep -F 'onclick="add('\''finance'\'')"' /tmp/home-page.html >/dev/null || { echo "Production Czech finance checkout button is missing"; exit 1; }
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/en/?deploy=${GITHUB_SHA}" --output /tmp/en-home-page.html
+          grep -F 'href="/en/my-finances.html"' /tmp/en-home-page.html >/dev/null || { echo "Production English homepage is missing My Finances link"; exit 1; }
+          grep -F 'onclick="add('\''finance'\'')"' /tmp/en-home-page.html >/dev/null || { echo "Production English finance checkout button is missing"; exit 1; }
           for name in aplikace-zdravi.html aplikace-finance.html aplikace-investice.html aplikace-cile.html aplikace-vztahy.html aplikace-rozvoj.html aplikace-firma.html aplikace-podnikani.html aplikace-prace.html ochrana-osobnich-udaju.html obchodni-podminky.html cookies.html; do
             for prefix in '' 'en/'; do
               url="https://kupsiapku.cz/${prefix}${name}?deploy=${GITHUB_SHA}"
@@ -201,4 +209,4 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/admin.php?action=session" | grep -q '"authenticated":false'
           status=$(curl --silent --show-error --max-time 30 --output /tmp/admin-denied.json --write-out '%{http_code}' "https://kupsiapku.cz/api/admin.php?action=dashboard")
           test "$status" = 401
-          echo "Production verification OK: My Finances homepage link + checkout + 24 SEO pages + existing checks"
+          echo "Production verification OK: Czech + English My Finances homepage links + checkout + 24 SEO pages + existing checks"
