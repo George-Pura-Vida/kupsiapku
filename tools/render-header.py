@@ -49,12 +49,18 @@ def render(path):
         items.append('<a class="siteHeader-cart" href="#checkout"><span aria-hidden="true">🛒</span><span class="siteHeader-sr">Košík, počet aplikací:</span> <span id="count" aria-live="polite">0</span></a>')
     if name == 'admin.html':
         items += ['<strong>Administrace</strong>', '<button id="logout" class="btn alt hide" type="button">Odhlásit</button>']
+
+    # My Finances uses different filenames in Czech and English. Render its
+    # language switch deterministically even when checking a generated/deploy
+    # workspace; other pages keep the existing counterpart-exists behaviour.
     other = language_counterpart(path, en)
+    has_language_switch = name in LANGUAGE_PAIRS or other.exists()
     language=''
-    if other.exists():
+    if has_language_switch:
         for lang, flag, label in [('cs','CZ','CZ'),('en','GB','EN')]:
             content=f'<span class="siteHeader-flag siteHeader-flag{flag}" aria-hidden="true"></span>{label}'
-            if (lang=='en') == en: language+=f'<span aria-current="true">{content}</span>'
+            if (lang=='en') == en:
+                language+=f'<span aria-current="true">{content}</span>'
             else:
                 if name in LANGUAGE_PAIRS:
                     href = ('/' + LANGUAGE_PAIRS[name]) if en else ('/en/' + LANGUAGE_PAIRS[name])
