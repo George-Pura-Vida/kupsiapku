@@ -1,12 +1,22 @@
-<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Přihlášení | Kup si apku</title><link rel="stylesheet" href="style.css?v=20260926-2"><script src="header.js?v=20260926-2" defer></script></head><body><header class="siteHeader">
-  <div class="siteHeader-inner">
-    <a class="siteHeader-brand" href="/"><span aria-hidden="true">🚀</span> KUP SI <b>APKU</b></a>
-    <div class="siteHeader-languages" aria-label="Jazyk"><span aria-current="true"><span class="siteHeader-flag siteHeader-flagCZ" aria-hidden="true"></span>CZ</span><a href="/en/prihlaseni.html" lang="en" hreflang="en" aria-label="English version"><span class="siteHeader-flag siteHeader-flagGB" aria-hidden="true"></span>EN</a></div>
-    <button class="siteHeader-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otevřít menu" hidden><span aria-hidden="true">☰</span></button>
-    <nav class="siteHeader-nav" id="site-navigation" aria-label="Hlavní navigace">
-      <a href="/index.html#apps">Aplikace</a>
-      <a href="/doporucit.html">Doporučit a vydělat</a>
-      <a href="/ucet.html">Můj účet</a>
-    </nav>
-  </div>
-</header><main class="accountMain"><section class="accountShell"><div class="eyebrow">Přihlášení</div><h1>Přihlásit se</h1><div class="accountPanel"><label class="accountRow"><span>E-mail</span><input placeholder="E-mail"></label><label class="accountRow"><span>Heslo</span><input placeholder="Heslo"></label></div><div class="accountActions"><button class="btn">Pokračovat</button><a href="index.html">Zpět</a></div><p class="legal">Bezpečné operace budou po aktivaci backendu ověřovány serverem.</p></section></main></body></html>
+<!doctype html><html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Přihlášení | Kup si apku</title><link rel="stylesheet" href="style.css?v=20260926-2"><script src="header.js?v=20260926-2" defer></script></head><body><header class="siteHeader"><div class="siteHeader-inner"><a class="siteHeader-brand" href="/"><span aria-hidden="true">🚀</span> KUP SI <b>APKU</b></a><div class="siteHeader-languages" aria-label="Jazyk"><span aria-current="true"><span class="siteHeader-flag siteHeader-flagCZ" aria-hidden="true"></span>CZ</span><a href="/en/prihlaseni.html" lang="en" hreflang="en" aria-label="English version"><span class="siteHeader-flag siteHeader-flagGB" aria-hidden="true"></span>EN</a></div><button class="siteHeader-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Otevřít menu" hidden><span aria-hidden="true">☰</span></button><nav class="siteHeader-nav" id="site-navigation" aria-label="Hlavní navigace"><a href="/index.html#apps">Aplikace</a><a href="/doporucit.html">Doporučit a vydělat</a><a href="/ucet.html">Můj účet</a></nav></div></header><main class="accountMain"><section class="accountShell"><div class="eyebrow">Přihlášení</div><h1>Přihlásit se</h1><form id="loginForm" novalidate><div class="accountPanel"><label class="accountRow"><span>E-mail</span><input id="email" name="email" type="email" autocomplete="email" maxlength="190" required><small class="fieldError" id="emailError"></small></label><label class="accountRow"><span>Heslo</span><input id="password" name="password" type="password" autocomplete="current-password" required><small class="fieldError" id="passwordError"></small></label></div><div id="formMessage" role="alert" aria-live="polite"></div><div class="accountActions"><button id="submitButton" class="btn" type="submit">Přihlásit se</button><a href="index.html">Zpět</a></div></form><p class="legal">Přihlášení je chráněno zabezpečenou cookie session.</p></section></main><script>
+(() => {
+  const form=document.getElementById('loginForm'); const button=document.getElementById('submitButton'); const message=document.getElementById('formMessage');
+  const clearErrors=()=>{message.textContent='';['email','password'].forEach(n=>{document.getElementById(n+'Error').textContent='';document.getElementById(n).removeAttribute('aria-invalid');});};
+  form.addEventListener('submit', async e => {
+    e.preventDefault(); clearErrors(); if(!form.reportValidity()) return;
+    button.disabled=true; button.textContent='Přihlašuji…';
+    try {
+      const response=await fetch('/api/auth/login.php',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({email:document.getElementById('email').value.trim(),password:document.getElementById('password').value})});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok || !data.ok){
+        if(data.fields) Object.entries(data.fields).forEach(([n,t])=>{const el=document.getElementById(n+'Error');if(el)el.textContent=String(t);const input=document.getElementById(n);if(input)input.setAttribute('aria-invalid','true');});
+        if(data.error==='INVALID_CREDENTIALS'){document.getElementById('email').setAttribute('aria-invalid','true');document.getElementById('password').setAttribute('aria-invalid','true');}
+        message.textContent=data.message || (response.status===429?'Příliš mnoho pokusů. Zkuste to později.':'Přihlášení se nepodařilo.'); return;
+      }
+      if(data.csrfToken) sessionStorage.setItem('ksa_csrf',data.csrfToken);
+      window.location.assign('/ucet.html');
+    } catch(_){message.textContent='Server je momentálně nedostupný. Zkuste to prosím znovu.';}
+    finally{button.disabled=false;button.textContent='Přihlásit se';}
+  });
+})();
+</script></body></html>
