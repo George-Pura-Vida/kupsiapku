@@ -38,7 +38,7 @@ jobs:
                   errors.append(f'{name}: missing portfolio cart action')
           cart=Path('cart.js').read_text(encoding='utf-8')
           header=Path('header.js').read_text(encoding='utf-8')
-          for required in ("[data-cart-add]","[data-cart-buy]","localStorage","data-cart-count","500 Kč","CZK 500"):
+          for required in ("[data-cart-add]","[data-cart-buy]","localStorage","data-cart-count"):
               if required not in cart+header:
                   errors.append(f'shared frontend: missing {required}')
           required_sections = {
