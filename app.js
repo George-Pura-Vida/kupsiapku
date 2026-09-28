@@ -1,3 +1,7 @@
+window.KSA_BUILD="1664352-20260928-1607";
+document.documentElement.dataset.ksaBuild=window.KSA_BUILD;
+console.info("%cKUPSIAPKU BUILD","font-weight:bold;font-size:16px",window.KSA_BUILD,location.href);
+console.info("KSA app.js loaded",{build:window.KSA_BUILD,script:document.currentScript?.src||"unknown",time:new Date().toISOString()});
 const refCode=new URLSearchParams(location.search).get("ref");if(refCode)localStorage.setItem("ksa_ref",refCode);
 const KEY="kupsiapku_cart";
 const APPS=[["zdravi","Moje zdraví","❤️"],["finance","Moje finance","🪙"],["portfolio","Moje portfolio","📈"],["cile","Moje cíle a góly","🎯"],["vztahy","Moje vztahy","💞"],["rozvoj","Můj rozvoj","🪷"],["firma","Moje firma","💼"],["podnikani","Moje podnikání","🚀"],["prace","Nová práce","🧭"]];
