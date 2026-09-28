@@ -1,1 +1,3 @@
-User-agent: *\nAllow: /\nSitemap: https://kupsiapku.cz/sitemap.xml
+User-agent: *
+Allow: /
+Sitemap: https://kupsiapku.cz/sitemap.xml
