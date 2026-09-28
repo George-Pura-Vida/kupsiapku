@@ -1,0 +1,4 @@
+<?php
+declare(strict_types=1);
+require_once dirname(__DIR__).'/auth.php';
+if($_SERVER['REQUEST_METHOD']!=='GET'){header('Allow: GET');respond(['ok'=>false,'error'=>'METHOD_NOT_ALLOWED'],405);}$pdo=db(true);$user=require_user($pdo);$s=$pdo->prepare('SELECT o.id,o.order_number,o.total_minor,o.currency,o.status,o.created_at,COUNT(oi.id) item_count FROM orders o LEFT JOIN order_items oi ON oi.order_id=o.id WHERE o.user_id=? GROUP BY o.id,o.order_number,o.total_minor,o.currency,o.status,o.created_at ORDER BY o.created_at DESC,o.id DESC LIMIT 100');$s->execute([(int)$user['id']]);$rows=[];foreach($s->fetchAll(PDO::FETCH_ASSOC) as $r)$rows[]=['id'=>(int)$r['id'],'number'=>$r['order_number'],'totalMinor'=>(int)$r['total_minor'],'currency'=>$r['currency'],'status'=>$r['status'],'createdAt'=>$r['created_at'],'itemCount'=>(int)$r['item_count']];respond(['ok'=>true,'orders'=>$rows]);
