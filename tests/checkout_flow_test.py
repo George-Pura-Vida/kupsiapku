@@ -1,20 +1,28 @@
 """Exercise registration and order persistence against a disposable MySQL database."""
-import http.cookiejar
+from http.cookies import SimpleCookie
 import json
 import urllib.request
 
 base = 'http://127.0.0.1:8080'
-client = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+session_cookie = ''
 
 
 def request(path, payload=None, csrf=None):
+    global session_cookie
     data = json.dumps(payload).encode() if payload is not None else None
     headers = {'Accept': 'application/json'}
     if data is not None:
         headers['Content-Type'] = 'application/json'
     if csrf:
         headers['X-CSRF-Token'] = csrf
-    with client.open(urllib.request.Request(base + path, data=data, headers=headers), timeout=15) as response:
+    if session_cookie:
+        headers['Cookie'] = session_cookie
+    with urllib.request.urlopen(urllib.request.Request(base + path, data=data, headers=headers), timeout=15) as response:
+        if response.headers.get('Set-Cookie'):
+            cookie = SimpleCookie()
+            cookie.load(response.headers['Set-Cookie'])
+            if 'ksa_session' in cookie:
+                session_cookie = 'ksa_session=' + cookie['ksa_session'].value
         return response.status, json.load(response)
 
 
