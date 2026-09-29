@@ -6,26 +6,75 @@ require_once dirname(__DIR__).'/auth.php';
 header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store, no-cache, must-revalidate');
 
-function apps_list_failure(Throwable $e): never {
+function apps_list_request_id(): string {
     try {
-        $requestId=bin2hex(random_bytes(6));
+        return bin2hex(random_bytes(6));
     } catch(Throwable $ignored) {
-        $requestId=substr(hash('sha256',uniqid('',true)),0,12);
+        return substr(hash('sha256',uniqid('',true)),0,12);
+    }
+}
+
+function apps_list_failure(Throwable $e, array $context=[]): never {
+    $requestId=apps_list_request_id();
+    $safeContext=[];
+    foreach($context as $key=>$value){
+        if(is_scalar($value)||$value===null){
+            $safeContext[(string)$key]=$value;
+        }
     }
     error_log(sprintf(
-        '[apps/list][%s] %s: %s in %s:%d',
+        '[apps/list][%s] %s: %s in %s:%d context=%s',
         $requestId,
         get_class($e),
         $e->getMessage(),
         basename($e->getFile()),
-        $e->getLine()
+        $e->getLine(),
+        json_encode($safeContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
     ));
     respond([
         'ok'=>false,
         'error'=>'APPS_LIST_UNAVAILABLE',
-        'message'=>'Seznam aplikací se nyní nepodařilo načíst.',
         'requestId'=>$requestId
     ],200);
+}
+
+function verify_user_products_schema(PDO $pdo): array {
+    $required=[
+        'user_id'=>null,
+        'product_code'=>null,
+        'status'=>null,
+        'activated_at'=>null
+    ];
+
+    // SHOW COLUMNS is read-only and exposes no schema details to the client.
+    // Any concrete DB error is caught by the outer handler and kept server-side.
+    $stmt=$pdo->query('SHOW COLUMNS FROM `ksa_user_products`');
+    $columns=$stmt->fetchAll(PDO::FETCH_ASSOC);
+    if(!$columns){
+        throw new RuntimeException('ksa_user_products exists but returned no columns');
+    }
+
+    foreach($columns as $column){
+        $field=(string)($column['Field']??'');
+        if(array_key_exists($field,$required)){
+            $required[$field]=(string)($column['Type']??'unknown');
+        }
+    }
+
+    $missing=[];
+    foreach($required as $field=>$type){
+        if($type===null)$missing[]=$field;
+    }
+    if($missing){
+        throw new RuntimeException('ksa_user_products missing required columns: '.implode(',',$missing));
+    }
+
+    // Return only non-sensitive diagnostic facts for the server log.
+    return [
+        'table'=>'ksa_user_products',
+        'column_count'=>count($columns),
+        'required_columns_ok'=>true
+    ];
 }
 
 try {
@@ -33,10 +82,10 @@ try {
         respond(['ok'=>false,'error'=>'METHOD_NOT_ALLOWED'],405);
     }
 
-    // bootstrap.php defines db(), but does not create a global $pdo.
-    // Initialize the connection explicitly before authentication.
     $pdo=db();
     $user=require_user($pdo);
+
+    $schemaContext=verify_user_products_schema($pdo);
 
     $routes=[
         'zdravi'=>['name'=>'Moje zdraví','icon'=>'❤️'],
@@ -50,8 +99,6 @@ try {
         'prace'=>['name'=>'Nová práce','icon'=>'💼']
     ];
 
-    // Read-only runtime query. Checkout/licence schema migration is deliberately
-    // not executed from this endpoint.
     $q=$pdo->prepare("SELECT up.product_code, MIN(up.activated_at) AS activated_at
         FROM ksa_user_products up
         WHERE up.user_id=? AND up.status='active'
@@ -84,5 +131,5 @@ try {
         'count'=>count($apps)
     ]);
 } catch(Throwable $e) {
-    apps_list_failure($e);
+    apps_list_failure($e,isset($schemaContext)?$schemaContext:['stage'=>'schema_check']);
 }
