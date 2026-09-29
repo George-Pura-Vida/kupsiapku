@@ -11,6 +11,18 @@ function ensure_checkout_schema(PDO $pdo): void {
     $pdo->exec('CREATE TABLE IF NOT EXISTS ksa_order_status_history (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,order_id BIGINT UNSIGNED NOT NULL,from_status VARCHAR(30) NOT NULL,to_status VARCHAR(30) NOT NULL,changed_by VARCHAR(100) NOT NULL DEFAULT "admin",reason VARCHAR(255) NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY idx_ksa_status_history_order(order_id,created_at),CONSTRAINT fk_ksa_status_history_order FOREIGN KEY(order_id) REFERENCES ksa_orders(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     $products=[['zdravi','Moje zdraví'],['finance','Moje finance'],['investice','Moje portfolio'],['cile','Moje cíle a góly'],['vztahy','Moje vztahy'],['rozvoj','Můj rozvoj'],['firma','Moje firma'],['podnikani','Moje podnikání'],['prace','Nová práce']];
     $insert=$pdo->prepare('INSERT INTO ksa_products(code,name,price_minor,currency,is_active) VALUES(?,?,50000,"CZK",1) ON DUPLICATE KEY UPDATE name=VALUES(name)');foreach($products as $product)$insert->execute($product);
+    backfill_paid_order_products($pdo);
+}
+
+function backfill_paid_order_products(PDO $pdo): int {
+    if(strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME))!=='mysql') return 0;
+    $sql='INSERT INTO ksa_user_products(user_id,product_code,order_id,status,activated_at,revoked_at,revoke_reason)
+          SELECT o.user_id,i.product_code,o.id,"active",UTC_TIMESTAMP(),NULL,NULL
+          FROM ksa_orders o
+          JOIN ksa_order_items i ON i.order_id=o.id
+          LEFT JOIN ksa_user_products up ON up.user_id=o.user_id AND up.product_code=i.product_code AND up.order_id=o.id
+          WHERE o.status="paid" AND up.id IS NULL';
+    return (int)$pdo->exec($sql);
 }
 
 function grant_order_products(PDO $pdo,int $orderId,int $userId): int {
