@@ -18,12 +18,14 @@ $subtotal=0;foreach($products as $p)$subtotal+=(int)$p['price_minor'];$count=cou
 $first=trim((string)($d['firstName']??$user['first_name']??''));$last=trim((string)($d['lastName']??$user['last_name']??''));$email=strtolower(trim((string)($d['email']??$user['email']??'')));$phone=trim((string)($d['phone']??$user['phone']??''));if($first===''||$last===''||!filter_var($email,FILTER_VALIDATE_EMAIL))respond(['ok'=>false,'error'=>'VALIDATION_ERROR','message'=>'Doplňte jméno, příjmení a platný e-mail.'],422);
 try{$pdo->beginTransaction();$s=$pdo->prepare('INSERT INTO ksa_orders(order_number,user_id,customer_email,customer_first_name,customer_last_name,customer_phone,billing_street,billing_city,billing_postal_code,billing_country,subtotal_minor,discount_minor,total_minor,currency,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,"CZK","pending",UTC_TIMESTAMP())');$s->execute([$number,(int)$user['id'],$email,$first,$last,$phone!==''?$phone:null,$street,$city,$zip,$country,$subtotal,$discount,$total]);$orderId=(int)$pdo->lastInsertId();$i=$pdo->prepare('INSERT INTO ksa_order_items(order_id,product_code,product_name,quantity,unit_price_minor,total_minor,created_at) VALUES(?,?,?,1,?,?,UTC_TIMESTAMP())');foreach($products as $p)$i->execute([$orderId,$p['code'],$p['name'],(int)$p['price_minor'],(int)$p['price_minor']]);$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();error_log('Order create failed: '.$e->getMessage());respond(['ok'=>false,'error'=>'ORDER_CREATE_FAILED','message'=>'Objednávku se nepodařilo uložit.'],500);}
 
-// E-mail is deliberately best-effort: the order has already been committed and must
-// remain successful even when the hosting mail transport is temporarily unavailable.
+// Notifications are best-effort: the order is already committed and mail failure
+// must never turn a successfully stored order into an API failure.
 try {
     $appUrl=rtrim((string)(getenv('APP_URL')?:'https://kupsiapku.cz'),'/');
     $fromEmail=trim((string)(getenv('MAIL_FROM')?:'info@kupsiapku.cz'));
-    $adminEmail=trim((string)(getenv('ADMIN_EMAIL')?:$fromEmail));
+    // Production owner/admin recipient. ADMIN_EMAIL may override it when explicitly set.
+    $configuredAdmin=trim((string)(getenv('ADMIN_EMAIL')?:''));
+    $adminEmail=filter_var($configuredAdmin,FILTER_VALIDATE_EMAIL)?$configuredAdmin:'jgjanousek@gmail.com';
     $encodeHeader=static fn(string $value): string => '=?UTF-8?B?'.base64_encode($value).'?=';
     $headers=implode("\r\n",[
         'MIME-Version: 1.0',
@@ -41,16 +43,13 @@ try {
     $customerSubject='Potvrzení objednávky '.$number.' | KupSiApku';
     $customerMessage="Dobrý den {$first} {$last},\n\nděkujeme za Vaši objednávku na KupSiApku.cz.\n\nČíslo objednávky: {$number}\nStav: Přijata – čeká na další zpracování\n\nObjednané aplikace:\n{$productText}\n\nCelková cena: {$totalText}\n\nSvoje objednávky můžete zobrazit zde:\n{$appUrl}/objednavky.html\n\nJakmile se stav objednávky změní, budeme Vás informovat.\n\nDěkujeme.\nKupSiApku.cz\n{$appUrl}\n";
     $customerSent=@mail($email,$encodeHeader($customerSubject),$customerMessage,$headers);
-    if(!$customerSent)error_log('Order email failed: customer; order='.$number.'; email='.$email);
+    error_log('Order customer notification: order='.$number.'; recipient='.$email.'; sent='.($customerSent?'YES':'NO'));
 
-    if(filter_var($adminEmail,FILTER_VALIDATE_EMAIL)){
-        $adminSubject='Nová objednávka '.$number.' | KupSiApku';
-        $adminMessage="Byla vytvořena nová objednávka.\n\nČíslo: {$number}\nID objednávky: {$orderId}\nStav: pending\n\nZákazník:\n{$first} {$last}\nE-mail: {$email}\n".($phone!==''?"Telefon: {$phone}\n":'')."\nFakturační adresa:\n{$street}\n{$zip} {$city}\n{$country}\n\nObjednané aplikace:\n{$productText}\n\nCelkem: {$totalText}\n\nAdministrace:\n{$appUrl}/admin.html\n";
-        $adminSent=@mail($adminEmail,$encodeHeader($adminSubject),$adminMessage,$headers);
-        if(!$adminSent)error_log('Order email failed: admin; order='.$number.'; email='.$adminEmail);
-    }else{
-        error_log('Order admin email skipped: invalid ADMIN_EMAIL; order='.$number);
-    }
+    $adminSubject='Nová objednávka '.$number.' | KupSiApku';
+    $adminMessage="Byla vytvořena nová objednávka.\n\nČíslo: {$number}\nID objednávky: {$orderId}\nStav: pending\n\nZákazník:\n{$first} {$last}\nE-mail: {$email}\n".($phone!==''?"Telefon: {$phone}\n":'')."\nFakturační adresa:\n{$street}\n{$zip} {$city}\n{$country}\n\nObjednané aplikace:\n{$productText}\n\nCelkem: {$totalText}\n\nAdministrace:\n{$appUrl}/admin.html\n";
+    $adminSent=@mail($adminEmail,$encodeHeader($adminSubject),$adminMessage,$headers);
+    error_log('Order admin notification: order='.$number.'; recipient='.$adminEmail.'; sent='.($adminSent?'YES':'NO'));
+    if(!$adminSent)error_log('Order email failed: admin; order='.$number.'; email='.$adminEmail);
 }catch(Throwable $mailError){
     error_log('Order email exception: order='.$number.'; error='.$mailError->getMessage());
 }
