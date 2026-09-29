@@ -33,6 +33,9 @@ SetEnv DONATION_ACCOUNT CZ8220100000000223366333+FIOBCZPPXXX
 <FilesMatch "\.html?$">
 Header set Cache-Control "no-cache, must-revalidate"
 </FilesMatch>
+<FilesMatch "^(robots\.txt|sitemap\.xml)$">
+Header set Cache-Control "no-cache, must-revalidate"
+</FilesMatch>
 <FilesMatch "\.js$">
 Header set Cache-Control "no-cache, no-store, must-revalidate"
 Header set Pragma "no-cache"
