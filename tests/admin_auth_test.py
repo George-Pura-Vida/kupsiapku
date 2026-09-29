@@ -126,9 +126,21 @@ with tempfile.TemporaryDirectory(prefix='ksa-auth-test-') as temp, socketserver.
         anonymous.session(); check(anonymous.call('reset-password',payload),422)
         check(c.login(new),401); check(c.login(reset),200)
         assert db.execute('SELECT COUNT(*) FROM admin_reset_tokens').fetchone()[0]==0
+        assert check(c.session(),200)['recoveryEmail']=='admin@example.test'
+        check(c.call('change-email',{'email':'next@example.test','currentPassword':'wrong'}),422)
+        check(c.call('change-email',{'email':'next@example.test','currentPassword':reset}),200)
+        assert check(c.session(),200)['recoveryEmail']=='admin@example.test'
+        email_token=re.search(r'#email=([a-f0-9]{64})',messages[-1])[1]
+        assert db.execute('SELECT token_hash FROM admin_recovery_email').fetchone()[0]==hashlib.sha256(email_token.encode()).hexdigest()
+        check(c.call('confirm-email',{'token':'0'*64}),422)
+        check(c.call('confirm-email',{'token':email_token}),200)
+        check(c.call('confirm-email',{'token':email_token}),422)
+        assert check(c.session(),200)['recoveryEmail']=='next@example.test'
+        check(c.call('forgot-password',{'username':'admin'}),200)
+        assert '#reset=' in messages[-1]
         for _ in range(22): response=c.login('incorrect')
         check(response,429)
         db.close()
-        print('PASS: login, CSRF/origin, secure cookies, legacy migration, password validation/change, logout, session revocation, reset delivery, hashed/expired/single-use tokens, new login and rate limiting.')
+        print('PASS: login, CSRF/origin, secure cookies, legacy migration, password change, reset delivery, verified recovery email, hashed/expired/single-use tokens and rate limiting.')
     finally:
         process.terminate(); process.wait(timeout=10); smtp.shutdown(); log.close()

@@ -17,6 +17,16 @@ $suffix = $mysql ? ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4' : '';
 $pdo->exec('CREATE TABLE IF NOT EXISTS admin_auth_state (admin_id BIGINT PRIMARY KEY,password_hash VARCHAR(255) NULL,version CHAR(64) NOT NULL)' . $suffix);
 $pdo->exec('CREATE TABLE IF NOT EXISTS admin_reset_tokens (token_hash CHAR(64) PRIMARY KEY,admin_id BIGINT NOT NULL,version CHAR(64) NOT NULL,expires_at BIGINT NOT NULL)' . $suffix);
 $pdo->exec('CREATE TABLE IF NOT EXISTS admin_rate_limits (bucket CHAR(64) PRIMARY KEY,hits INTEGER NOT NULL,expires_at BIGINT NOT NULL)' . $suffix);
+$pdo->exec('CREATE TABLE IF NOT EXISTS admin_recovery_email (admin_id BIGINT PRIMARY KEY,email VARCHAR(190) NULL,pending_email VARCHAR(190) NULL,token_hash CHAR(64) NULL,expires_at BIGINT NULL)' . $suffix);
+
+function admin_recovery_email(int $adminId): string {
+    global $pdo;
+    $q=$pdo->prepare('SELECT email FROM admin_recovery_email WHERE admin_id=?'); $q->execute([$adminId]);
+    $verified=$q->fetchColumn();
+    if ($verified) return (string)$verified;
+    $file=__DIR__.'/admin-config.php'; $config=is_file($file) ? require $file : [];
+    return (string)(getenv('ADMIN_RESET_EMAIL') ?: ($config['reset_email']??''));
+}
 
 function admin_user(string $username): ?array {
     global $pdo;
@@ -132,7 +142,7 @@ function admin_auth_dispatch(): void {
     if ($method==='GET' && $action==='session') {
         $user=admin_session_user();
         if (!$user) { $csrf=$_SESSION['csrf']??bin2hex(random_bytes(32)); $_SESSION=['csrf'=>$csrf]; }
-        respond(['ok'=>true,'authenticated'=>(bool)$user,'username'=>$user['username']??null,'csrf'=>$_SESSION['csrf']]);
+        respond(['ok'=>true,'authenticated'=>(bool)$user,'username'=>$user['username']??null,'recoveryEmail'=>$user?admin_recovery_email((int)$user['id']):null,'csrf'=>$_SESSION['csrf']]);
     }
     if ($method!=='POST') return;
     if ((int)($_SERVER['CONTENT_LENGTH']??0)>8192) respond(['ok'=>false,'error'=>'Požadavek je příliš velký.'],413);
@@ -160,14 +170,12 @@ function admin_auth_dispatch(): void {
     if ($action==='logout') { admin_clear_session(); respond(['ok'=>true]); }
     if ($action==='forgot-password') {
         admin_limit('reset-ip',$ip,10,3600);
-        $configFile=__DIR__.'/admin-config.php';
-        $config=is_file($configFile) ? require $configFile : [];
-        $email=(string)(getenv('ADMIN_RESET_EMAIL') ?: ($config['reset_email']??''));
-        if (!filter_var($email,FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/',$email)) respond(['ok'=>false,'error'=>'Obnova hesla zatím není nastavena na serveru.'],503);
         $username=clean_string($data,'username',80);
         admin_limit('reset-user',strtolower($username),3,3600);
         $user=$username==='admin' ? admin_user('admin') : null;
         if ($user) {
+            $email=admin_recovery_email((int)$user['id']);
+            if (!filter_var($email,FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/',$email)) respond(['ok'=>false,'error'=>'Obnova hesla zatím není nastavena na serveru.'],503);
             $token=bin2hex(random_bytes(32));
             $digest=hash('sha256',$token);
             $pdo->prepare('DELETE FROM admin_reset_tokens WHERE expires_at < ?')->execute([time()]);
@@ -214,5 +222,31 @@ function admin_auth_dispatch(): void {
             $pdo->commit();
         } catch (Throwable $e) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $e; }
         admin_clear_session(); respond(['ok'=>true,'message'=>'Heslo bylo změněno a všechna přihlášení ukončena. Přihlaste se novým heslem.']);
+    }
+    if ($action==='change-email') {
+        require_admin(); admin_limit('change-email',(string)$_SESSION['admin_id'],5,3600);
+        $user=admin_session_user(); $email=strtolower(trim((string)($data['email']??'')));
+        if (strlen($email)>190 || !filter_var($email,FILTER_VALIDATE_EMAIL) || preg_match('/[\r\n]/',$email)) respond(['ok'=>false,'error'=>'Zadejte platný e-mail.'],422);
+        if (!$user || !admin_verify((string)($data['currentPassword']??''),$user)) respond(['ok'=>false,'error'=>'Současné heslo není správné.'],422);
+        if ($email===admin_recovery_email((int)$user['id'])) respond(['ok'=>false,'error'=>'Tento e-mail je již nastavený.'],422);
+        $token=bin2hex(random_bytes(32)); $digest=hash('sha256',$token);
+        $link='https://kupsiapku.cz/admin.html#email='.$token;
+        $body="Potvrzení e-mailu správce KupSiApku.cz\n\nOtevřete do 30 minut odkaz:\n".$link."\n\nPokud jste změnu nežádali, zprávu ignorujte.\n";
+        $sent=@mail($email,'=?UTF-8?B?'.base64_encode('Potvrzení e-mailu správce KupSiApku.cz').'?=',$body,"MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nFrom: Kup si apku <info@jirijanousek.cz>");
+        if (!$sent) respond(['ok'=>false,'error'=>'Potvrzovací e-mail se nepodařilo odeslat. Zkuste to později.'],503);
+        $sql=$pdo->getAttribute(PDO::ATTR_DRIVER_NAME)==='mysql'
+            ? 'INSERT INTO admin_recovery_email(admin_id,pending_email,token_hash,expires_at) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE pending_email=VALUES(pending_email),token_hash=VALUES(token_hash),expires_at=VALUES(expires_at)'
+            : 'INSERT INTO admin_recovery_email(admin_id,pending_email,token_hash,expires_at) VALUES(?,?,?,?) ON CONFLICT(admin_id) DO UPDATE SET pending_email=excluded.pending_email,token_hash=excluded.token_hash,expires_at=excluded.expires_at';
+        $pdo->prepare($sql)->execute([$user['id'],$email,$digest,time()+1800]);
+        respond(['ok'=>true,'message'=>'Na novou adresu jsme poslali potvrzovací odkaz. Platí 30 minut.']);
+    }
+    if ($action==='confirm-email') {
+        require_admin(); admin_limit('confirm-email',$ip,20,900);
+        $user=admin_session_user(); $token=(string)($data['token']??'');
+        if (!preg_match('/^[a-f0-9]{64}$/D',$token)) respond(['ok'=>false,'error'=>'Odkaz je neplatný nebo vypršel.'],422);
+        $q=$pdo->prepare('UPDATE admin_recovery_email SET email=pending_email,pending_email=NULL,token_hash=NULL,expires_at=NULL WHERE admin_id=? AND token_hash=? AND expires_at>? AND pending_email IS NOT NULL');
+        $q->execute([$user['id'],hash('sha256',$token),time()]);
+        if ($q->rowCount()!==1) respond(['ok'=>false,'error'=>'Odkaz je neplatný nebo vypršel.'],422);
+        respond(['ok'=>true,'message'=>'E-mail pro obnovu hesla byl změněn.','recoveryEmail'=>admin_recovery_email((int)$user['id'])]);
     }
 }

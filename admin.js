@@ -18,22 +18,26 @@ function showLogin(text='') {
   ['orders','affiliates','payouts','summary'].forEach(id=>$('#'+id).replaceChildren());
 }
 function showDashboard(){['loginCard','forgotCard','resetCard'].forEach(id=>$('#'+id).classList.add('hide'));$('#dashboard').classList.remove('hide');$('#logout').classList.remove('hide');}
-let resetToken='';
+let resetToken='',emailToken='';
 const resetMatch=location.hash.match(/^#reset=([a-f0-9]{64})$/);
 if(resetMatch) resetToken=resetMatch[1];
+const emailMatch=location.hash.match(/^#email=([a-f0-9]{64})$/);
+if(emailMatch) emailToken=emailMatch[1];
 if(location.hash) history.replaceState(null,'',location.pathname+location.search);
-async function refreshSession(){const s=await api('session');csrf=s.csrf;return s;}
-const ready=(async()=>{try{const s=await refreshSession();if(resetToken){$('#loginCard').classList.add('hide');$('#resetCard').classList.remove('hide');}else if(s.authenticated){showDashboard();await load();}}catch(e){$('#loginForm .adminMessage').textContent=e.message;}})();
+async function refreshSession(){const s=await api('session');csrf=s.csrf;if(s.authenticated)$('#recoveryEmail').textContent=s.recoveryEmail||'není nastaven';return s;}
+async function confirmEmail(){if(!emailToken)return;const token=emailToken;emailToken='';try{const r=await api('confirm-email',{method:'POST',body:JSON.stringify({token})});$('#recoveryEmail').textContent=r.recoveryEmail;message(r.message);}catch(e){message(e.message,true);}}
+const ready=(async()=>{try{const s=await refreshSession();if(resetToken){$('#loginCard').classList.add('hide');$('#resetCard').classList.remove('hide');}else if(s.authenticated){showDashboard();await load();await confirmEmail();}}catch(e){$('#loginForm .adminMessage').textContent=e.message;}})();
 function onForm(id,handler){$('#'+id).addEventListener('submit',async e=>{
   e.preventDefault();const form=e.currentTarget,button=form.querySelector('button'),notice=form.querySelector('.adminMessage');
   button.disabled=true;notice.textContent='Pracuji…';notice.classList.remove('error');
   try{await ready;if(!csrf)await refreshSession();await handler(form,notice);}catch(err){notice.textContent=err.message;notice.classList.add('error');}finally{button.disabled=false;}
 });}
-onForm('loginForm',async(form,notice)=>{const d=Object.fromEntries(new FormData(form));const r=await api('login',{method:'POST',body:JSON.stringify(d)});csrf=r.csrf;form.reset();notice.textContent='';showDashboard();await load();});
+onForm('loginForm',async(form,notice)=>{const d=Object.fromEntries(new FormData(form));const r=await api('login',{method:'POST',body:JSON.stringify(d)});csrf=r.csrf;form.reset();notice.textContent='';showDashboard();await refreshSession();await load();await confirmEmail();});
 $('#logout').addEventListener('click',async()=>{try{await api('logout',{method:'POST',body:'{}'});csrf='';showLogin('Byli jste odhlášeni.');await refreshSession();}catch(e){message(e.message,true);}});
 $('#refresh').addEventListener('click',load);
 document.querySelectorAll('.adminTabs button').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.adminTabs button').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.adminPanel').forEach(p=>p.classList.toggle('hide',p.id!==b.dataset.tab));}));
 onForm('passwordForm',async(form)=>{const r=await api('change-password',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});form.reset();csrf='';showLogin(r.message);await refreshSession();});
+onForm('emailForm',async(form,notice)=>{const r=await api('change-email',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});form.reset();notice.textContent=r.message;});
 $('#forgotPassword').addEventListener('click',()=>{$('#loginCard').classList.add('hide');$('#forgotCard').classList.remove('hide');});
 document.querySelectorAll('.backToLogin').forEach(b=>b.addEventListener('click',()=>{resetToken='';showLogin();}));
 onForm('forgotForm',async(form,notice)=>{const r=await api('forgot-password',{method:'POST',body:JSON.stringify(Object.fromEntries(new FormData(form)))});notice.textContent=r.message;});

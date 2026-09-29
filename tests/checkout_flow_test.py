@@ -1,7 +1,12 @@
 """Exercise registration and order persistence against a disposable MySQL database."""
 from http.cookies import SimpleCookie
 import json
+import os
+import pathlib
+import re
+import subprocess
 import urllib.request
+import urllib.error
 
 base = 'http://127.0.0.1:8080'
 session_cookie = ''
@@ -17,7 +22,11 @@ def request(path, payload=None, csrf=None):
         headers['X-CSRF-Token'] = csrf
     if session_cookie:
         headers['Cookie'] = session_cookie
-    with urllib.request.urlopen(urllib.request.Request(base + path, data=data, headers=headers), timeout=15) as response:
+    try:
+        response = urllib.request.urlopen(urllib.request.Request(base + path, data=data, headers=headers), timeout=15)
+    except urllib.error.HTTPError as error:
+        response = error
+    with response:
         if response.headers.get('Set-Cookie'):
             cookie = SimpleCookie()
             cookie.load(response.headers['Set-Cookie'])
@@ -45,4 +54,29 @@ assert order['totalMinor'] == 129000 and order['itemCount'] == 3 and order['curr
 status, listed = request('/api/orders/list.php')
 assert status == 200 and listed['ok'] and len(listed['orders']) == 1, listed
 assert listed['orders'][0]['number'] == order['number'] and listed['orders'][0]['totalMinor'] == 129000, listed
-print('Checkout flow OK: register, session, create order, list persisted order')
+status, forgot = request('/api/auth/forgot.php', {'email': 'absent@example.test'})
+assert status == 200 and forgot['ok']
+mail_path = pathlib.Path('/tmp/checkout-reset-mail.txt')
+assert not mail_path.exists(), 'Unknown account must not receive mail'
+status, forgot = request('/api/auth/forgot.php', {'email': 'checkout@example.test'})
+assert status == 200 and forgot['ok'] and mail_path.exists(), forgot
+mail = mail_path.read_text()
+token = re.search(r'#reset=([a-f0-9]{64})', mail)[1]
+def sql(query):
+    result = subprocess.run(['php', '-r', 'require "api/auth.php"; $pdo=db(true); echo $pdo->query(' + repr(query) + ')->fetchColumn();'], capture_output=True, text=True, check=True)
+    return result.stdout
+assert sql('SELECT token_hash FROM auth_password_resets LIMIT 1') != token
+payload = {'token': token, 'newPassword': 'new-test-password', 'confirmPassword': 'new-test-password'}
+status, expired = request('/api/auth/reset.php', {**payload, 'token': '0'*64})
+assert status == 422 and expired['error'] == 'INVALID_TOKEN', expired
+status, reset = request('/api/auth/reset.php', payload)
+assert status == 200 and reset['ok'], reset
+status, reused = request('/api/auth/reset.php', payload)
+assert status == 422 and reused['error'] == 'INVALID_TOKEN', reused
+status, me = request('/api/auth/me.php')
+assert status == 200 and not me['authenticated'], me
+status, old = request('/api/auth/login.php', {'email':'checkout@example.test','password':'test-password-only'})
+assert status == 401, old
+status, new = request('/api/auth/login.php', {'email':'checkout@example.test','password':'new-test-password'})
+assert status == 200 and new['ok'], new
+print('Checkout and customer reset OK: registered account, persisted order, private single-use token, revoked session, new login')
