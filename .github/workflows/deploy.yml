@@ -169,7 +169,6 @@ jobs:
       - name: Verify production
         shell: bash
         run: |
-          set -x
           sleep 5
           for page in index.html en/index.html moje-finance.html en/my-finances.html moje-zdravi.html en/my-health.html moje-portfolio.html en/my-portfolio.html cart.js header.js header.css; do
             curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/$page?deploy=${GITHUB_SHA}" -o "/tmp/$(echo "$page" | tr '/' '-')"
@@ -177,7 +176,8 @@ jobs:
           grep -F 'data-cart-add="portfolio"' /tmp/moje-portfolio.html >/dev/null
           grep -F 'data-cart-add="portfolio"' /tmp/en-my-portfolio.html >/dev/null
           grep -F '[data-cart-buy]' /tmp/cart.js >/dev/null
-          grep -F 'app.js?v=20260929-order-api-1' /tmp/index.html >/dev/null
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" -o /tmp/home.html
+          grep -F 'app.js?v=20260929-order-api-1' /tmp/home.html >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.js >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.css >/dev/null
           node --check /tmp/cart.js
