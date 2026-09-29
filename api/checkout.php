@@ -1,0 +1,12 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/bootstrap.php';
+
+function ensure_checkout_schema(PDO $pdo): void {
+    $pdo->exec('CREATE TABLE IF NOT EXISTS ksa_products (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,code VARCHAR(50) NOT NULL UNIQUE,name VARCHAR(190) NOT NULL,price_minor BIGINT UNSIGNED NOT NULL,currency CHAR(3) NOT NULL DEFAULT "CZK",is_active TINYINT(1) NOT NULL DEFAULT 1) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS ksa_orders (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,order_number VARCHAR(40) NOT NULL UNIQUE,user_id BIGINT UNSIGNED NOT NULL,customer_email VARCHAR(190) NOT NULL,customer_first_name VARCHAR(100) NOT NULL,customer_last_name VARCHAR(100) NOT NULL,customer_phone VARCHAR(40),billing_street VARCHAR(190) NOT NULL,billing_city VARCHAR(100) NOT NULL,billing_postal_code VARCHAR(20) NOT NULL,billing_country VARCHAR(100) NOT NULL,subtotal_minor BIGINT UNSIGNED NOT NULL,discount_minor BIGINT UNSIGNED NOT NULL DEFAULT 0,total_minor BIGINT UNSIGNED NOT NULL,currency CHAR(3) NOT NULL DEFAULT "CZK",status VARCHAR(30) NOT NULL DEFAULT "pending",created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY idx_ksa_orders_user(user_id,created_at),KEY idx_ksa_orders_status(status,created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $pdo->exec('CREATE TABLE IF NOT EXISTS ksa_order_items (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,order_id BIGINT UNSIGNED NOT NULL,product_code VARCHAR(50) NOT NULL,product_name VARCHAR(190) NOT NULL,quantity SMALLINT UNSIGNED NOT NULL DEFAULT 1,unit_price_minor BIGINT UNSIGNED NOT NULL,total_minor BIGINT UNSIGNED NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY idx_ksa_items_order(order_id),CONSTRAINT fk_ksa_items_order FOREIGN KEY(order_id) REFERENCES ksa_orders(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $products=[['zdravi','Moje zdraví'],['finance','Moje finance'],['investice','Moje portfolio'],['cile','Moje cíle a góly'],['vztahy','Moje vztahy'],['rozvoj','Můj rozvoj'],['firma','Moje firma'],['podnikani','Moje podnikání'],['prace','Nová práce']];
+    $insert=$pdo->prepare('INSERT INTO ksa_products(code,name,price_minor,currency,is_active) VALUES(?,?,50000,"CZK",1) ON DUPLICATE KEY UPDATE name=VALUES(name)');
+    foreach($products as $product) $insert->execute($product);
+}
