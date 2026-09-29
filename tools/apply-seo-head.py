@@ -3,12 +3,15 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = "https://kupsiapku.cz"
-APP_SLUGS = ["zdravi", "finance", "investice", "cile", "vztahy", "rozvoj", "firma", "podnikani", "prace"]
+APP_SLUGS = ["cile", "vztahy", "rozvoj", "firma", "podnikani", "prace"]
+DETAIL_PAIRS = [("moje-zdravi.html", "en/my-health.html"), ("moje-finance.html", "en/my-finances.html"), ("moje-portfolio.html", "en/my-portfolio.html")]
 LEGAL = ["ochrana-osobnich-udaju.html", "obchodni-podminky.html", "cookies.html"]
 
 pairs = []
 for slug in APP_SLUGS:
     pairs.append((f"aplikace-{slug}.html", f"en/aplikace-{slug}.html", True))
+for cs_path, en_path in DETAIL_PAIRS:
+    pairs.append((cs_path, en_path, True))
 for name in LEGAL:
     pairs.append((name, f"en/{name}", False))
 
