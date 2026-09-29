@@ -7,85 +7,51 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: private, no-store, no-cache, must-revalidate');
 
 function apps_list_request_id(): string {
-    try {
-        return bin2hex(random_bytes(6));
-    } catch(Throwable $ignored) {
-        return substr(hash('sha256',uniqid('',true)),0,12);
-    }
+    try { return bin2hex(random_bytes(6)); }
+    catch(Throwable $ignored) { return substr(hash('sha256',uniqid('',true)),0,12); }
 }
 
-function apps_list_failure(Throwable $e, array $context=[]): never {
+function apps_list_fail(Throwable $e,string $stage): never {
     $requestId=apps_list_request_id();
-    $safeContext=[];
-    foreach($context as $key=>$value){
-        if(is_scalar($value)||$value===null){
-            $safeContext[(string)$key]=$value;
-        }
-    }
-    error_log(sprintf(
-        '[apps/list][%s] %s: %s in %s:%d context=%s',
-        $requestId,
-        get_class($e),
-        $e->getMessage(),
-        basename($e->getFile()),
-        $e->getLine(),
-        json_encode($safeContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
-    ));
-    respond([
-        'ok'=>false,
-        'error'=>'APPS_LIST_UNAVAILABLE',
-        'requestId'=>$requestId
-    ],200);
+    error_log(sprintf('[apps/list][%s][%s] %s: %s in %s:%d',
+        $requestId,$stage,get_class($e),$e->getMessage(),basename($e->getFile()),$e->getLine()));
+    respond(['ok'=>false,'error'=>'APPS_LIST_UNAVAILABLE','requestId'=>$requestId],200);
 }
 
-function verify_user_products_schema(PDO $pdo): array {
-    $required=[
-        'user_id'=>null,
-        'product_code'=>null,
-        'status'=>null,
-        'activated_at'=>null
-    ];
+function apps_list_driver(PDO $pdo): string {
+    return strtolower((string)$pdo->getAttribute(PDO::ATTR_DRIVER_NAME));
+}
 
-    // SHOW COLUMNS is read-only and exposes no schema details to the client.
-    // Any concrete DB error is caught by the outer handler and kept server-side.
-    $stmt=$pdo->query('SHOW COLUMNS FROM `ksa_user_products`');
-    $columns=$stmt->fetchAll(PDO::FETCH_ASSOC);
-    if(!$columns){
-        throw new RuntimeException('ksa_user_products exists but returned no columns');
+function apps_list_columns(PDO $pdo,string $driver): array {
+    if($driver==='mysql') {
+        $stmt=$pdo->query('SHOW COLUMNS FROM `ksa_user_products`');
+        $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_values(array_filter(array_map(static fn(array $r): string => (string)($r['Field']??''),$rows)));
     }
-
-    foreach($columns as $column){
-        $field=(string)($column['Field']??'');
-        if(array_key_exists($field,$required)){
-            $required[$field]=(string)($column['Type']??'unknown');
-        }
+    if($driver==='sqlite') {
+        $stmt=$pdo->query('PRAGMA table_info(ksa_user_products)');
+        $rows=$stmt->fetchAll(PDO::FETCH_ASSOC);
+        return array_values(array_filter(array_map(static fn(array $r): string => (string)($r['name']??''),$rows)));
     }
-
-    $missing=[];
-    foreach($required as $field=>$type){
-        if($type===null)$missing[]=$field;
-    }
-    if($missing){
-        throw new RuntimeException('ksa_user_products missing required columns: '.implode(',',$missing));
-    }
-
-    // Return only non-sensitive diagnostic facts for the server log.
-    return [
-        'table'=>'ksa_user_products',
-        'column_count'=>count($columns),
-        'required_columns_ok'=>true
-    ];
+    throw new RuntimeException('Unsupported database driver');
 }
 
 try {
-    if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET') {
-        respond(['ok'=>false,'error'=>'METHOD_NOT_ALLOWED'],405);
-    }
+    if(($_SERVER['REQUEST_METHOD']??'GET')!=='GET') respond(['ok'=>false,'error'=>'METHOD_NOT_ALLOWED'],405);
 
-    $pdo=db();
-    $user=require_user($pdo);
+    try { $pdo=db(); }
+    catch(Throwable $e) { apps_list_fail($e,'db'); }
 
-    $schemaContext=verify_user_products_schema($pdo);
+    try { $user=require_user($pdo); }
+    catch(Throwable $e) { apps_list_fail($e,'auth'); }
+
+    try {
+        $driver=apps_list_driver($pdo);
+        $columns=apps_list_columns($pdo,$driver);
+        $required=['user_id','product_code','status','activated_at'];
+        $missing=array_values(array_diff($required,$columns));
+        if($missing) throw new RuntimeException('ksa_user_products schema mismatch: '.implode(',',$missing));
+    } catch(Throwable $e) { apps_list_fail($e,'schema'); }
 
     $routes=[
         'zdravi'=>['name'=>'Moje zdraví','icon'=>'❤️'],
@@ -99,15 +65,14 @@ try {
         'prace'=>['name'=>'Nová práce','icon'=>'💼']
     ];
 
-    $q=$pdo->prepare("SELECT up.product_code, MIN(up.activated_at) AS activated_at
-        FROM ksa_user_products up
-        WHERE up.user_id=? AND up.status='active'
-        GROUP BY up.product_code
-        ORDER BY MIN(up.activated_at), up.product_code");
-    $q->execute([(int)$user['id']]);
+    try {
+        $q=$pdo->prepare("SELECT product_code, MIN(activated_at) AS activated_at FROM ksa_user_products WHERE user_id=? AND status='active' GROUP BY product_code ORDER BY MIN(activated_at), product_code");
+        $q->execute([(int)$user['id']]);
+        $rows=$q->fetchAll(PDO::FETCH_ASSOC);
+    } catch(Throwable $e) { apps_list_fail($e,'query'); }
 
     $apps=[];
-    foreach($q->fetchAll(PDO::FETCH_ASSOC) as $row){
+    foreach($rows as $row){
         $code=(string)$row['product_code'];
         $route=$routes[$code]??['name'=>$code,'icon'=>'📱'];
         $apps[]=[
@@ -115,7 +80,7 @@ try {
             'name'=>$route['name'],
             'icon'=>$route['icon'],
             'url'=>'/api/apps/open.php?app='.rawurlencode($code),
-            'activatedAt'=>$row['activated_at']
+            'activatedAt'=>$row['activated_at']??null
         ];
     }
 
@@ -123,13 +88,13 @@ try {
         'ok'=>true,
         'user'=>[
             'id'=>(int)$user['id'],
-            'email'=>$user['email'],
-            'firstName'=>$user['first_name'],
-            'lastName'=>$user['last_name']
+            'email'=>$user['email']??'',
+            'firstName'=>$user['first_name']??'',
+            'lastName'=>$user['last_name']??''
         ],
         'apps'=>$apps,
         'count'=>count($apps)
     ]);
 } catch(Throwable $e) {
-    apps_list_failure($e,isset($schemaContext)?$schemaContext:['stage'=>'schema_check']);
+    apps_list_fail($e,'unexpected');
 }
