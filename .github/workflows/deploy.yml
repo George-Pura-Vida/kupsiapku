@@ -34,7 +34,7 @@ jobs:
           DB_USER: root
           DB_PASSWORD: test_password
         run: |
-          php -d 'sendmail_path=python3 tests/sendmail_capture.py /tmp/checkout-reset-mail.txt' -S 127.0.0.1:8080 -t . >/tmp/checkout-php.log 2>&1 &
+          php -d "sendmail_path=python3 $GITHUB_WORKSPACE/tests/sendmail_capture.py /tmp/checkout-reset-mail.txt" -S 127.0.0.1:8080 -t . >/tmp/checkout-php.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true; cat /tmp/checkout-php.log' EXIT
           python3 tests/checkout_flow_test.py
