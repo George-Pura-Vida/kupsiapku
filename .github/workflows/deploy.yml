@@ -178,7 +178,7 @@ jobs:
           grep -F 'data-cart-add="portfolio"' /tmp/en-my-portfolio.html >/dev/null
           grep -F '[data-cart-buy]' /tmp/cart.js >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/?deploy=${GITHUB_SHA}" -o /tmp/home.html
-          grep -F 'app.js?v=20260929-order-api-1' /tmp/home.html >/dev/null
+          grep -F 'app.js?v=20260929-checkout-account-1' /tmp/home.html >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.js >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.css >/dev/null
           node --check /tmp/cart.js
