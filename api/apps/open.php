@@ -29,6 +29,8 @@ header('Cache-Control: private, no-store');
 // Route only after authentication and active licence verification.
 $targets=[
     'zdravi'=>'https://energie.jirijanousek.cz/',
+    'finance'=>'https://finance.jirjanousek.cz/',
+    'investice'=>'https://portfolio.jirijanousek.cz/',
     'cile'=>'/api/apps/cile.php',
 ];
 $target=$targets[$code]??('/api/apps/private.php?app='.rawurlencode($code));
