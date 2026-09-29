@@ -15,7 +15,7 @@ if(!has_active_product($pdo,(int)$user['id'],$code)){header('Location: /moje-apl
 header('Cache-Control: private, no-store');
 $targets=[
 'zdravi'=>'https://energie.jirijanousek.cz/',
-'finance'=>'/api/apps/sso.php?action=issue',
+'finance'=>'https://budget.jirijanousek.cz/',
 'investice'=>'https://portfolio.jirijanousek.cz/',
 'cile'=>'/api/apps/cile.php',
 ];
