@@ -13,11 +13,19 @@ if(!$user){header('Location: /prihlaseni.html?next='.rawurlencode('/api/apps/ope
 ensure_checkout_schema($pdo);
 if(!has_active_product($pdo,(int)$user['id'],$code)){header('Location: /moje-aplikace.html?access=denied&app='.rawurlencode($code),true,302);exit;}
 header('Cache-Control: private, no-store');
+
+/* Priority / Moje cile a goly must never open a shared logged-in workspace directly.
+ * Route through the one-time SSO ticket issuer instead. The issuer performs its own
+ * active-license check and then hands the browser to Priority's SSO consumer. */
+if($code==='cile'){
+    header('Location: /api/apps/sso.php?action=priority-launch',true,303);
+    exit;
+}
+
 $targets=[
 'zdravi'=>'https://energie.jirijanousek.cz/',
 'finance'=>'https://budget.jirijanousek.cz/',
 'investice'=>'https://portfolio.jirijanousek.cz/',
-'cile'=>'https://priority.jirijanousek.cz/',
 'vztahy'=>'https://vztahy.jirijanousek.cz/',
 'firma'=>'https://ai.jirijanousek.cz/',
 ];
