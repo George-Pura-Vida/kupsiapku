@@ -190,6 +190,3 @@ jobs:
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/assets/screenshots/portfolio-prehled-sharp.svg?deploy=${GITHUB_SHA}" -o /tmp/portfolio-prehled-sharp.svg
           grep -F '<svg' /tmp/portfolio-prehled-sharp.svg >/dev/null
           echo 'Production validation OK'
-
-      - name: One-shot authorized production order verification
-        run: python3 tests/production_checkout_test.py
