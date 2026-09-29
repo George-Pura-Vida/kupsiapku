@@ -26,7 +26,7 @@ if($action==='issue'){
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store, private');
     header('Referrer-Policy: no-referrer');
-    echo '<!doctype html><meta charset="utf-8"><title>Otevírám Moje finance</title><form id="s" method="post" action="https://jirijanousek.cz/finance/sso.php"><input type="hidden" name="token" value="'.htmlspecialchars($token,ENT_QUOTES,'UTF-8').'"></form><script>document.getElementById("s").submit()</script><noscript><button form="s">Pokračovat</button></noscript>';
+    echo '<!doctype html><meta charset="utf-8"><title>Otevírám Moje finance</title><form id="s" method="post" action="https://budget.jirijanousek.cz/sso.php"><input type="hidden" name="token" value="'.htmlspecialchars($token,ENT_QUOTES,'UTF-8').'"></form><script>document.getElementById("s").submit()</script><noscript><button form="s">Pokračovat</button></noscript>';
     exit;
 }
 
