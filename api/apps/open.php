@@ -17,7 +17,7 @@ $targets=[
 'zdravi'=>'https://energie.jirijanousek.cz/',
 'finance'=>'https://budget.jirijanousek.cz/',
 'investice'=>'https://portfolio.jirijanousek.cz/',
-'cile'=>'/api/apps/cile.php',
+'cile'=>'https://priority.jirijanousek.cz/',
 ];
 $target=$targets[$code]??('/api/apps/private.php?app='.rawurlencode($code));
 header('Location: '.$target,true,302);exit;
