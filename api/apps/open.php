@@ -25,5 +25,11 @@ if(!$user){header('Location: /prihlaseni.html?next='.rawurlencode('/api/apps/ope
 ensure_checkout_schema($pdo);
 if(!has_active_product($pdo,(int)$user['id'],$code)){header('Location: /moje-aplikace.html?access=denied&app='.rawurlencode($code),true,302);exit;}
 header('Cache-Control: private, no-store');
-$target=$code==='cile'?'/api/apps/cile.php':'/api/apps/private.php?app='.rawurlencode($code);
+
+// Route only after authentication and active licence verification.
+$targets=[
+    'zdravi'=>'https://energie.jirijanousek.cz/',
+    'cile'=>'/api/apps/cile.php',
+];
+$target=$targets[$code]??('/api/apps/private.php?app='.rawurlencode($code));
 header('Location: '.$target,true,302);exit;
