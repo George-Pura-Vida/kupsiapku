@@ -9,6 +9,12 @@ function ensure_finance_sso_schema(PDO $pdo): void {
     $pdo->exec('CREATE TABLE IF NOT EXISTS ksa_app_sso_tokens (id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,token_hash CHAR(64) NOT NULL UNIQUE,user_id BIGINT UNSIGNED NOT NULL,app_code VARCHAR(50) NOT NULL,expires_at DATETIME NOT NULL,used_at DATETIME NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY idx_sso_expiry(expires_at),KEY idx_sso_user_app(user_id,app_code)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
 }
 function sso_request_id(): string { return substr(bin2hex(random_bytes(8)),0,12); }
+function issue_priority_ticket(PDO $pdo,int $userId): string {
+    if(!has_active_product($pdo,$userId,'cile')){http_response_code(403);exit('LICENSE_REQUIRED');}
+    $ticket=rtrim(strtr(base64_encode(random_bytes(32)),'+/','-_'),'=');
+    $pdo->prepare('INSERT INTO sso_tickets(token_hash,user_id,app_code,expires_at) VALUES(?,?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 SECOND))')->execute([hash('sha256',$ticket),$userId,'cile']);
+    return $ticket;
+}
 
 $pdo=db();ensure_auth_schema($pdo);ensure_checkout_schema($pdo);ensure_finance_sso_schema($pdo);ensure_sso_schema($pdo);
 $action=(string)($_GET['action']??'');
@@ -33,13 +39,20 @@ if($action==='redeem'){
     }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();error_log('[finance-sso]['.$requestId.'] redeem failed: '.$e->getMessage());respond(['ok'=>false,'requestId'=>$requestId],500);}
 }
 
-/* Priority / Moje cile a goly: issue a one-time ticket. */
+/* Browser launch from Moje aplikace. Session + license were checked by open.php;
+ * check both again here before issuing the one-time ticket. */
+if($action==='priority-launch'){
+    $user=current_session($pdo);
+    if(!$user){header('Location: /prihlaseni.html?next='.rawurlencode('/api/apps/open.php?app=cile'),true,302);exit;}
+    $ticket=issue_priority_ticket($pdo,(int)$user['id']);
+    header('Cache-Control: private, no-store');header('Referrer-Policy: no-referrer');
+    header('Location: https://priority.jirijanousek.cz/sso/?ticket='.rawurlencode($ticket),true,303);exit;
+}
+
+/* JSON/API variant retained for future clients; requires CSRF. */
 if($action==='priority-issue'){
     if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST'){header('Allow: POST');respond(['ok'=>false,'error'=>'METHOD_NOT_ALLOWED'],405);}
-    $user=require_csrf($pdo);
-    if(!has_active_product($pdo,(int)$user['id'],'cile'))respond(['ok'=>false,'error'=>'LICENSE_REQUIRED'],403);
-    $ticket=rtrim(strtr(base64_encode(random_bytes(32)),'+/','-_'),'=');
-    $pdo->prepare('INSERT INTO sso_tickets(token_hash,user_id,app_code,expires_at) VALUES(?,?,?,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 60 SECOND))')->execute([hash('sha256',$ticket),(int)$user['id'],'cile']);
-    respond(['ok'=>true,'launchUrl'=>'https://priority.jirijanousek.cz/sso/consume.php?ticket='.rawurlencode($ticket)]);
+    $user=require_csrf($pdo);$ticket=issue_priority_ticket($pdo,(int)$user['id']);
+    respond(['ok'=>true,'launchUrl'=>'https://priority.jirijanousek.cz/sso/?ticket='.rawurlencode($ticket)]);
 }
 http_response_code(404);exit;
