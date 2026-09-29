@@ -4,12 +4,12 @@ DirectoryIndex index.html
 RewriteEngine On
 
 # Legacy app URLs have one permanent canonical destination in each language.
-RewriteRule ^aplikace-zdravi\.html$ /moje-zdravi.html [R=301,L]
-RewriteRule ^aplikace-finance\.html$ /moje-finance.html [R=301,L]
-RewriteRule ^aplikace-investice\.html$ /moje-portfolio.html [R=301,L]
-RewriteRule ^en/aplikace-zdravi\.html$ /en/my-health.html [R=301,L]
-RewriteRule ^en/aplikace-finance\.html$ /en/my-finances.html [R=301,L]
-RewriteRule ^en/aplikace-investice\.html$ /en/my-portfolio.html [R=301,L]
+RewriteRule ^aplikace-zdravi\.html$ https://kupsiapku.cz/moje-zdravi.html [R=301,L]
+RewriteRule ^aplikace-finance\.html$ https://kupsiapku.cz/moje-finance.html [R=301,L]
+RewriteRule ^aplikace-investice\.html$ https://kupsiapku.cz/moje-portfolio.html [R=301,L]
+RewriteRule ^en/aplikace-zdravi\.html$ https://kupsiapku.cz/en/my-health.html [R=301,L]
+RewriteRule ^en/aplikace-finance\.html$ https://kupsiapku.cz/en/my-finances.html [R=301,L]
+RewriteRule ^en/aplikace-investice\.html$ https://kupsiapku.cz/en/my-portfolio.html [R=301,L]
 
 # Canonicalize an explicitly requested /index.html to the clean root URL.
 # THE_REQUEST prevents an internal DirectoryIndex lookup from looping.
