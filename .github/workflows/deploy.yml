@@ -169,6 +169,7 @@ jobs:
       - name: Verify production
         shell: bash
         run: |
+          set -x
           sleep 5
           for page in index.html en/index.html moje-finance.html en/my-finances.html moje-zdravi.html en/my-health.html moje-portfolio.html en/my-portfolio.html cart.js header.js header.css; do
             curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/$page?deploy=${GITHUB_SHA}" -o "/tmp/$(echo "$page" | tr '/' '-')"
