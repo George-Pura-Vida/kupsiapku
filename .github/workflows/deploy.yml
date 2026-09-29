@@ -176,6 +176,7 @@ jobs:
           grep -F 'data-cart-add="portfolio"' /tmp/moje-portfolio.html >/dev/null
           grep -F 'data-cart-add="portfolio"' /tmp/en-my-portfolio.html >/dev/null
           grep -F '[data-cart-buy]' /tmp/cart.js >/dev/null
+          grep -F 'app.js?v=20260929-order-api-1' /tmp/index.html >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.js >/dev/null
           grep -F 'siteHeader-cart' /tmp/header.css >/dev/null
           node --check /tmp/cart.js
@@ -184,6 +185,7 @@ jobs:
           node --check /tmp/app.js
           grep -F 'kupsiapku_cart' /tmp/app.js >/dev/null
           grep -F 'portfolio' /tmp/app.js >/dev/null
+          grep -F '/api/orders/create.php' /tmp/app.js >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/auth/me.php?deploy=${GITHUB_SHA}" -o /tmp/auth-me.json
           python3 -c 'import json; d=json.load(open("/tmp/auth-me.json")); assert d.get("ok") is True and d.get("authenticated") is False'
           grep -F 'portfolio-prehled-sharp.svg' /tmp/moje-portfolio.html >/dev/null
