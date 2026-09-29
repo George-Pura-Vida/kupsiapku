@@ -88,6 +88,10 @@ jobs:
           php -l api/admin.php
           php -l api/admin-auth.php
           php -l api/bootstrap.php
+          php -l api/checkout.php
+          php -l api/auth.php
+          php -l api/security.php
+          for file in api/auth/*.php api/orders/*.php; do php -l "$file"; done
           node --check admin.js
           python3 tests/admin_auth_test.py
 
@@ -148,6 +152,8 @@ jobs:
           node --check /tmp/app.js
           grep -F 'kupsiapku_cart' /tmp/app.js >/dev/null
           grep -F 'portfolio' /tmp/app.js >/dev/null
+          curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/api/auth/me.php?deploy=${GITHUB_SHA}" -o /tmp/auth-me.json
+          python3 -c 'import json; d=json.load(open("/tmp/auth-me.json")); assert d.get("ok") is True and d.get("authenticated") is False'
           grep -F 'portfolio-prehled-sharp.svg' /tmp/moje-portfolio.html >/dev/null
           curl --fail --silent --show-error --max-time 30 "https://kupsiapku.cz/assets/screenshots/portfolio-prehled-sharp.svg?deploy=${GITHUB_SHA}" -o /tmp/portfolio-prehled-sharp.svg
           grep -F '<svg' /tmp/portfolio-prehled-sharp.svg >/dev/null
