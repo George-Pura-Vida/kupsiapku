@@ -18,6 +18,8 @@ $targets=[
 'finance'=>'https://budget.jirijanousek.cz/',
 'investice'=>'https://portfolio.jirijanousek.cz/',
 'cile'=>'https://priority.jirijanousek.cz/',
+'vztahy'=>'https://vztahy.jirijanousek.cz/',
+'firma'=>'https://ai.jirijanousek.cz/',
 ];
 $target=$targets[$code]??('/api/apps/private.php?app='.rawurlencode($code));
 header('Location: '.$target,true,302);exit;
