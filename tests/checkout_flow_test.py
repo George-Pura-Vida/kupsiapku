@@ -54,9 +54,14 @@ assert order['totalMinor'] == 129000 and order['itemCount'] == 3 and order['curr
 status, listed = request('/api/orders/list.php')
 assert status == 200 and listed['ok'] and len(listed['orders']) == 1, listed
 assert listed['orders'][0]['number'] == order['number'] and listed['orders'][0]['totalMinor'] == 129000, listed
+
+# Order creation now sends customer/admin notifications through the same captured
+# sendmail transport. Clear those messages before testing password-reset privacy.
+mail_path = pathlib.Path('/tmp/checkout-reset-mail.txt')
+mail_path.unlink(missing_ok=True)
+
 status, forgot = request('/api/auth/forgot.php', {'email': 'absent@example.test'})
 assert status == 200 and forgot['ok']
-mail_path = pathlib.Path('/tmp/checkout-reset-mail.txt')
 assert not mail_path.exists(), 'Unknown account must not receive mail'
 status, forgot = request('/api/auth/forgot.php', {'email': 'checkout@example.test'})
 assert status == 200 and forgot['ok'] and mail_path.exists(), forgot
