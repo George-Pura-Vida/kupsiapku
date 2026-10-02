@@ -1,4 +1,4 @@
-name: Diagnose jirijanousek.cz FTP root
+name: Diagnose jirijanousek.cz production router
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           set -euo pipefail
           test "$(git hash-object ops/jirijanousek/index.php)" = "fd25251ff68db34cc151599546fd96dd784d7f53"
 
-      - name: Read-only FTP diagnostics
+      - name: Read-only production diagnostics
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -35,25 +35,15 @@ jobs:
           curl --insecure --fail --silent --show-error --max-time 30 \
             --ftp-ssl-reqd \
             --user "$FTP_USERNAME:$FTP_PASSWORD" \
-            "ftp://$FTP_SERVER:21/" -o /tmp/root-listing.txt
-          echo '--- FTP ROOT LISTING ---'
-          sed -n '1,80p' /tmp/root-listing.txt
+            "ftp://$FTP_SERVER:21/public_html/" -o /tmp/public-html-listing.txt
+          echo '--- PUBLIC_HTML LISTING ---'
+          sed -n '1,120p' /tmp/public-html-listing.txt
 
-          for path in index.php index.html public_html/index.php public_html/index.html; do
-            safe_name="$(echo "$path" | tr '/' '-')"
-            if curl --insecure --fail --silent --show-error --max-time 30 \
-              --ftp-ssl-reqd \
-              --user "$FTP_USERNAME:$FTP_PASSWORD" \
-              "ftp://$FTP_SERVER:21/$path" -o "/tmp/$safe_name"; then
-              echo "--- $path ---"
-              wc -c "/tmp/$safe_name"
-              grep -Eo '<title>[^<]+' "/tmp/$safe_name" | head -n 1 || true
-              for marker in '1 000+' '100+ MIL.' '6 ČLENŮ V TÝMU' 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE' 'KupSiApku' 'kupsiapku'; do
-                if grep -F "$marker" "/tmp/$safe_name" >/dev/null; then echo "FOUND: $marker"; fi
-              done
-            else
-              echo "MISSING: $path"
-            fi
-          done
+          curl --insecure --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/public_html/index.php" -o /tmp/public_html_index.php
+          echo '--- PUBLIC_HTML/INDEX.PHP ---'
+          cat /tmp/public_html_index.php
 
           echo 'READ-ONLY DIAGNOSTIC COMPLETE; NO FILES UPLOADED.'
