@@ -32,7 +32,7 @@ jobs:
           test -n "$FTP_USERNAME"
           test -n "$FTP_PASSWORD"
 
-          curl --fail --silent --show-error --max-time 30 \
+          curl --insecure --fail --silent --show-error --max-time 30 \
             --ftp-ssl-reqd \
             --user "$FTP_USERNAME:$FTP_PASSWORD" \
             "ftp://$FTP_SERVER:21/" -o /tmp/root-listing.txt
@@ -41,7 +41,7 @@ jobs:
 
           for path in index.php index.html public_html/index.php public_html/index.html; do
             safe_name="$(echo "$path" | tr '/' '-')"
-            if curl --fail --silent --show-error --max-time 30 \
+            if curl --insecure --fail --silent --show-error --max-time 30 \
               --ftp-ssl-reqd \
               --user "$FTP_USERNAME:$FTP_PASSWORD" \
               "ftp://$FTP_SERVER:21/$path" -o "/tmp/$safe_name"; then
