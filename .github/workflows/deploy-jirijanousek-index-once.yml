@@ -1,4 +1,4 @@
-name: Inspect production index initialization
+name: Safe one-file deploy jirijanousek.cz homepage stats
 
 on:
   push:
@@ -7,14 +7,18 @@ on:
     paths:
       - .github/workflows/deploy-jirijanousek-index-once.yml
 
+concurrency:
+  group: jirijanousek-index-one-shot
+  cancel-in-progress: false
+
 jobs:
-  diagnose:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
-      - name: Read current production index.php initialization
+      - name: Build safe production-compatible index.php
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -22,13 +26,147 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -euo pipefail
+          test -n "$FTP_SERVER"
+          test -n "$FTP_USERNAME"
+          test -n "$FTP_PASSWORD"
+
+          # Download current production index.php. This is the rollback copy too.
           curl --insecure --fail --silent --show-error --max-time 30 \
             --ftp-ssl-reqd \
             --user "$FTP_USERNAME:$FTP_PASSWORD" \
             "ftp://$FTP_SERVER:21/jirijanousek/index.php" \
-            -o /tmp/prod.php
-          echo '--- LINES 1-45 ---'
-          nl -ba /tmp/prod.php | sed -n '1,45p'
-          echo '--- LINES 375-400 ---'
-          nl -ba /tmp/prod.php | sed -n '375,400p'
-          echo 'READ-ONLY INSPECTION COMPLETE; NO FILES UPLOADED.'
+            -o /tmp/index.original.php
+
+          # Fail closed if production changed since the read-only inspection.
+          test "$(sha256sum /tmp/index.original.php | awk '{print $1}')" = \
+            "eecb1bef0a1e6a1d8d34bddefc43ec9895aac173df4509cba9e0c9ef0f29598f"
+
+          cp /tmp/index.original.php /tmp/index.patched.php
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('/tmp/index.patched.php')
+          s = p.read_text(encoding='utf-8')
+
+          anchor = "$s = jj_load_site();\n"
+          if s.count(anchor) != 1:
+              raise SystemExit('Expected exactly one jj_load_site() anchor')
+
+          override = r'''
+
+// Homepage claims aligned with the approved copy from commit 218b237.
+// Kept here as a production-safe override so no data, CSS or JS files need deployment.
+$s['trust'] = [
+    ['icon' => '◉', 'value' => '15+ let zkušeností', 'label' => ''],
+    ['icon' => '◎', 'value' => 'Dlouhodobé vztahy', 'label' => ''],
+    ['icon' => '◇', 'value' => 'Důvěra na prvním místě', 'label' => ''],
+];
+
+$s['stats'] = [
+    ['value' => '15+', 'label' => 'LET ZKUŠENOSTÍ VE FINANCÍCH'],
+    ['value' => '1 000+', 'label' => 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE*'],
+    ['value' => '200 MIL. KČ', 'label' => 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI*'],
+    ['value' => '1:1', 'label' => 'OSOBNÍ PŘÍSTUP'],
+];
+'''
+          s = s.replace(anchor, anchor + override, 1)
+
+          stats_anchor = '''            <?php endforeach; ?>
+        </div>
+    </section>
+
+    <section class="section" id="reference">'''
+          if s.count(stats_anchor) != 1:
+              raise SystemExit('Expected exactly one stats section anchor')
+
+          stats_replacement = '''            <?php endforeach; ?>
+        </div>
+        <p class="stat-note" style="max-width:1180px;margin:0 auto;padding:0 20px 18px;text-align:center;font-size:11px;color:#777;">*Údaje vycházejí z dlouhodobé profesní praxe a klientských investic v péči; stav k 31. 8. 2026.</p>
+    </section>
+
+    <section class="section" id="reference">'''
+          s = s.replace(stats_anchor, stats_replacement, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+          command -v php >/dev/null
+          php -l /tmp/index.patched.php
+
+          grep -F 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE*' /tmp/index.patched.php >/dev/null
+          grep -F 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI*' /tmp/index.patched.php >/dev/null
+          grep -F 'stav k 31. 8. 2026.' /tmp/index.patched.php >/dev/null
+
+          echo 'Patch built and PHP syntax is valid.'
+
+      - name: Preflight live production
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            'https://jirijanousek.cz/?predeploy=218b237' \
+            -o /tmp/live.before.html
+          grep -Fi 'SPOKOJENÝCH KLIENTŮ' /tmp/live.before.html >/dev/null
+          grep -Fi 'SPRAVOVANÝCH AKTIV' /tmp/live.before.html >/dev/null
+          grep -Fi 'ČLENŮ V TÝMU' /tmp/live.before.html >/dev/null
+          echo 'Preflight confirms the expected old production homepage.'
+
+      - name: Upload only jirijanousek/index.php and verify
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          rollback() {
+            echo 'Verification failed — restoring original index.php.' >&2
+            curl --insecure --fail --silent --show-error --max-time 30 \
+              --ftp-ssl-reqd \
+              --user "$FTP_USERNAME:$FTP_PASSWORD" \
+              --upload-file /tmp/index.original.php \
+              "ftp://$FTP_SERVER:21/jirijanousek/index.php" || true
+          }
+          trap 'rollback' ERR
+
+          curl --insecure --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            --upload-file /tmp/index.patched.php \
+            "ftp://$FTP_SERVER:21/jirijanousek/index.php"
+
+          curl --insecure --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/jirijanousek/index.php" \
+            -o /tmp/index.remote.php
+          cmp -s /tmp/index.patched.php /tmp/index.remote.php
+          php -l /tmp/index.remote.php
+
+          sleep 2
+          curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            'https://jirijanousek.cz/?deploy=218b237' \
+            -o /tmp/live.after.html
+
+          grep -Fi 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE' /tmp/live.after.html >/dev/null
+          grep -Fi 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI' /tmp/live.after.html >/dev/null
+          grep -Fi 'stav k 31. 8. 2026.' /tmp/live.after.html >/dev/null
+          ! grep -Fi 'SPOKOJENÝCH KLIENTŮ' /tmp/live.after.html >/dev/null
+          ! grep -Fi 'SPRAVOVANÝCH AKTIV' /tmp/live.after.html >/dev/null
+          ! grep -Fi 'ČLENŮ V TÝMU' /tmp/live.after.html >/dev/null
+
+          # Key routes must remain healthy after the one-file change.
+          for url in \
+            'https://jirijanousek.cz/investicni-zlato/' \
+            'https://jirijanousek.cz/investicni-stribro/' \
+            'https://jirijanousek.cz/investicni-fondy/' \
+            'https://jirijanousek.cz/bitcoin/' \
+            'https://jirijanousek.cz/pojisteni/' \
+            'https://jirijanousek.cz/expertiza/'; do
+            curl --fail --silent --show-error --max-time 30 -o /dev/null "$url"
+          done
+
+          trap - ERR
+          echo 'SAFE DEPLOY OK: only /jirijanousek/index.php changed; live verification passed.'
