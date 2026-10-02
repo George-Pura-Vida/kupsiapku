@@ -1,4 +1,4 @@
-name: Locate production statistics markup
+name: Inspect production index initialization
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Locate stats in current production index.php
+      - name: Read current production index.php initialization
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -27,13 +27,8 @@ jobs:
             --user "$FTP_USERNAME:$FTP_PASSWORD" \
             "ftp://$FTP_SERVER:21/jirijanousek/index.php" \
             -o /tmp/prod.php
-
-          echo '--- MATCHES ---'
-          grep -niE 'stats|stat-|klient|sprav|100\+|mil\.|člen|clen|tým|tym|zkušen|zkusen|trust|metric|counter' /tmp/prod.php | head -n 160 || true
-
-          echo '--- PHP INCLUDES/REQUIRES ---'
-          grep -niE 'include|require' /tmp/prod.php | head -n 80 || true
-
-          echo '--- LINES 130-260 ---'
-          nl -ba /tmp/prod.php | sed -n '130,260p'
+          echo '--- LINES 1-45 ---'
+          nl -ba /tmp/prod.php | sed -n '1,45p'
+          echo '--- LINES 375-400 ---'
+          nl -ba /tmp/prod.php | sed -n '375,400p'
           echo 'READ-ONLY INSPECTION COMPLETE; NO FILES UPLOADED.'
