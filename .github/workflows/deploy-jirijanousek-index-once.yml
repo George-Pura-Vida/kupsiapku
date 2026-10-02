@@ -1,4 +1,4 @@
-name: Verify jirijanousek.cz assets for index-only deploy
+name: Locate production statistics markup
 
 on:
   push:
@@ -14,13 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate staged source
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git hash-object ops/jirijanousek/index.php)" = "fd25251ff68db34cc151599546fd96dd784d7f53"
-
-      - name: Read-only asset compatibility check
+      - name: Locate stats in current production index.php
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -28,15 +22,18 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -euo pipefail
-          for file in assets/style.css assets/site.js; do
-            out="/tmp/$(basename "$file")"
-            curl --insecure --fail --silent --show-error --max-time 30 \
-              --ftp-ssl-reqd \
-              --user "$FTP_USERNAME:$FTP_PASSWORD" \
-              "ftp://$FTP_SERVER:21/jirijanousek/$file" -o "$out"
-            echo "$file $(wc -c < "$out") bytes git-blob=$(git hash-object "$out")"
-          done
-          test "$(git hash-object /tmp/style.css)" = "029b40bf67048c3f6dddc0bb91e4d527e6fc5fd4"
-          test "$(git hash-object /tmp/site.js)" = "4d5fa6c04ec077d0eba0e45d34802cf15a38c042"
-          echo 'ASSET COMPATIBILITY OK: production CSS and JS exactly match commit 218b237.'
-          echo 'READ-ONLY CHECK COMPLETE; NO FILES UPLOADED.'
+          curl --insecure --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/jirijanousek/index.php" \
+            -o /tmp/prod.php
+
+          echo '--- MATCHES ---'
+          grep -niE 'stats|stat-|klient|sprav|100\+|mil\.|člen|clen|tým|tym|zkušen|zkusen|trust|metric|counter' /tmp/prod.php | head -n 160 || true
+
+          echo '--- PHP INCLUDES/REQUIRES ---'
+          grep -niE 'include|require' /tmp/prod.php | head -n 80 || true
+
+          echo '--- LINES 130-260 ---'
+          nl -ba /tmp/prod.php | sed -n '130,260p'
+          echo 'READ-ONLY INSPECTION COMPLETE; NO FILES UPLOADED.'
