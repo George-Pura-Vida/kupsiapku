@@ -1,4 +1,4 @@
-name: Locate jirijanousek.cz static build
+name: Fingerprint jirijanousek.cz source
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
           set -euo pipefail
           test "$(git hash-object ops/jirijanousek/index.php)" = "fd25251ff68db34cc151599546fd96dd784d7f53"
 
-      - name: Read-only locate likely static builds
+      - name: Read-only source fingerprint
         shell: bash
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -28,30 +28,29 @@ jobs:
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
           set -euo pipefail
-          for dir in jirijanousek preview public_html/preview; do
-            echo "--- LISTING $dir/ ---"
-            if curl --insecure --fail --silent --show-error --max-time 30 \
-              --ftp-ssl-reqd \
-              --user "$FTP_USERNAME:$FTP_PASSWORD" \
-              "ftp://$FTP_SERVER:21/$dir/" -o /tmp/listing.txt; then
-              sed -n '1,120p' /tmp/listing.txt
-            else
-              echo "MISSING DIR: $dir"
-            fi
+          curl --insecure --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/jirijanousek/index.php" \
+            -o /tmp/prod-source.php
 
-            for file in index.php index.html README.md .git/HEAD; do
-              safe="$(echo "$dir-$file" | tr '/.' '--')"
-              if curl --insecure --fail --silent --show-error --max-time 30 \
-                --ftp-ssl-reqd \
-                --user "$FTP_USERNAME:$FTP_PASSWORD" \
-                "ftp://$FTP_SERVER:21/$dir/$file" -o "/tmp/$safe"; then
-                echo "FILE: $dir/$file"
-                wc -c "/tmp/$safe"
-                grep -Eo '<title>[^<]+' "/tmp/$safe" | head -n 1 || true
-                for marker in '1 000+' '100+ MIL.' '6 ČLENŮ V TÝMU' '200 MIL. KČ' 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE' 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI' 'ref: refs/heads/'; do
-                  if grep -F "$marker" "/tmp/$safe" >/dev/null; then echo "FOUND: $marker"; fi
-                done
-              fi
-            done
+          echo '--- PROD SOURCE FINGERPRINT ---'
+          wc -c /tmp/prod-source.php
+          sha256sum /tmp/prod-source.php
+          grep -Eo '<title>[^<]+' /tmp/prod-source.php | head -n 1 || true
+          for marker in \
+            'Diverzifikace a stabilita' \
+            'Digitální aktivum budoucnosti' \
+            'SPRÁVA WEBU' \
+            '100+ mil' \
+            '100+ MIL' \
+            '6 členů' \
+            '6 ČLENŮ' \
+            'spokojených klientů' \
+            'TÝM'; do
+            if grep -Fi "$marker" /tmp/prod-source.php >/dev/null; then echo "FOUND: $marker"; fi
           done
-          echo 'READ-ONLY LOCATE COMPLETE; NO FILES UPLOADED.'
+
+          echo '--- RELEVANT LINES ---'
+          grep -niE 'spokojen|100\+|6 člen|6 ČLEN|Diverzifikace|budoucnosti|SPRÁVA WEBU|TÝM' /tmp/prod-source.php | head -n 40 || true
+          echo 'READ-ONLY FINGERPRINT COMPLETE; NO FILES UPLOADED.'
