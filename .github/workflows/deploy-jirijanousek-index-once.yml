@@ -1,0 +1,121 @@
+name: One-shot deploy jirijanousek.cz index.php
+
+on:
+  push:
+    branches:
+      - ops/deploy-jirijanousek-index-218b237
+    paths:
+      - .github/workflows/deploy-jirijanousek-index-once.yml
+
+concurrency:
+  group: jirijanousek-index-one-shot
+  cancel-in-progress: false
+
+jobs:
+  deploy-index-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate staged source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git hash-object ops/jirijanousek/index.php)" = "fd25251ff68db34cc151599546fd96dd784d7f53"
+          grep -F 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE' ops/jirijanousek/index.php >/dev/null
+          grep -F 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI' ops/jirijanousek/index.php >/dev/null
+
+      - name: Validate Webkitty credentials
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FTP_SERVER"
+          test -n "$FTP_USERNAME"
+          test -n "$FTP_PASSWORD"
+
+      - name: Preflight production and FTP root
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            'https://jirijanousek.cz/?preflight=218b237' -o /tmp/live-before.html
+          grep -F '1 000+ SPOKOJENÝCH KLIENTŮ' /tmp/live-before.html >/dev/null
+          grep -F '100+ MIL. KČ SPRAVOVANÝCH AKTIV' /tmp/live-before.html >/dev/null
+
+          curl --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/index.php" \
+            -o /tmp/backup.index.php
+
+          grep -F '1 000+' /tmp/backup.index.php >/dev/null
+          grep -F '100+ MIL.' /tmp/backup.index.php >/dev/null
+          grep -F '6 ČLENŮ V TÝMU' /tmp/backup.index.php >/dev/null
+
+      - name: Upload only index.php with automatic rollback on verification failure
+        shell: bash
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          restore_backup() {
+            echo 'Verification failed; restoring previous index.php'
+            curl --fail --silent --show-error --max-time 30 \
+              --ftp-ssl-reqd \
+              --user "$FTP_USERNAME:$FTP_PASSWORD" \
+              --upload-file /tmp/backup.index.php \
+              "ftp://$FTP_SERVER:21/index.php"
+          }
+
+          curl --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            --upload-file ops/jirijanousek/index.php \
+            "ftp://$FTP_SERVER:21/index.php"
+
+          if ! curl --fail --silent --show-error --max-time 30 \
+            --ftp-ssl-reqd \
+            --user "$FTP_USERNAME:$FTP_PASSWORD" \
+            "ftp://$FTP_SERVER:21/index.php" \
+            -o /tmp/remote-after.index.php; then
+            restore_backup
+            exit 1
+          fi
+
+          if ! cmp -s ops/jirijanousek/index.php /tmp/remote-after.index.php; then
+            restore_backup
+            echo 'Remote index.php does not exactly match the staged source.' >&2
+            exit 1
+          fi
+
+          sleep 3
+          if ! curl --fail --silent --show-error --max-time 30 \
+            -H 'Cache-Control: no-cache' \
+            'https://jirijanousek.cz/?deploy=218b237' \
+            -o /tmp/live-after.html; then
+            restore_backup
+            exit 1
+          fi
+
+          if ! grep -F 'KLIENTŮ V RÁMCI DLOUHODOBÉ PROFESNÍ PRAXE' /tmp/live-after.html >/dev/null || \
+             ! grep -F 'OBJEM KLIENTSKÝCH INVESTIC V DLOUHODOBÉ PÉČI' /tmp/live-after.html >/dev/null || \
+             grep -F '100+ MIL. KČ SPRAVOVANÝCH AKTIV' /tmp/live-after.html >/dev/null; then
+            restore_backup
+            echo 'Production content verification failed; rollback completed.' >&2
+            exit 1
+          fi
+
+          echo 'SAFE DEPLOY OK: only /index.php was uploaded and production verification passed.'
